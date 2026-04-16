@@ -43,7 +43,7 @@ Browser  ──HTTPS──►  Nginx (port 443)
 7. Copy the string — it looks like:
 
 ```
-postgresql://doadmin:AVNS_xxxxxxxxxxxxxx@db-postgresql-fra1-xxxxx.db.ondigitalocean.com:25060/defaultdb?sslmode=require
+postgresql://doadmin:AVNS_xTAZtK2oyF3PYHCu6c9@educheck-db-do-user-26244215-0.j.db.ondigitalocean.com:25060/defaultdb?sslmode=require
 ```
 
 Keep this string — you will use it as `DATABASE_URL`.
@@ -151,7 +151,7 @@ nano .env
 Fill it in:
 
 ```env
-DATABASE_URL=postgresql://doadmin:AVNS_xxxx@db-postgresql-fra1-xxxxx.db.ondigitalocean.com:25060/defaultdb?sslmode=require
+DATABASE_URL=postgresql://doadmin:AVNS_xTAZtK2oyF3PYHCu6c9@educheck-db-do-user-26244215-0.j.db.ondigitalocean.com:25060/defaultdb?sslmode=require
 PORT=3000
 NODE_ENV=production
 ALLOWED_ORIGIN=https://yourdomain.com
