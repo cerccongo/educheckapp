@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduCheck | School Monitoring — DRC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  :root {
+    --orange: #C87533;
+    --orange-light: #f5e6d8;
+    --orange-dark: #9e5a22;
+    --green: #2d8a4e;
+    --red: #c0392b;
+    --partial: #e67e22;
+    --bg: #fafaf8;
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e1d8;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+  h1, h2, .font-display { font-family: 'Syne', sans-serif; }
+  [x-cloak] { display: none !important; }
+
+  /* Nav */
+  .nav-active { color: var(--orange); border-bottom: 2.5px solid var(--orange); padding-bottom: 2px; }
+  .nav-rule { height: 3px; background: var(--orange); }
+
+  /* Cards */
+  .card { background: #fff; border: 1.5px solid var(--border); border-radius: 10px; }
+  .card-hover:hover { border-color: var(--orange); box-shadow: 0 4px 16px rgba(200,117,51,0.12); }
+
+  /* Buttons */
+  .btn-primary { background: var(--orange); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; letter-spacing: .04em; cursor: pointer; transition: background .2s; }
+  .btn-primary:hover { background: var(--orange-dark); }
+  .btn-outline { background: transparent; color: var(--orange); border: 2px solid var(--orange); border-radius: 8px; font-weight: 700; font-size: 13px; letter-spacing: .04em; cursor: pointer; transition: all .2s; }
+  .btn-outline:hover { background: var(--orange-light); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; }
+  .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* Answer options */
+  .answer-option { border: 2px solid var(--border); border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all .15s; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .answer-option:hover { border-color: var(--orange); background: var(--orange-light); }
+  .answer-option.selected-ok { border-color: var(--green); background: #eafaf1; color: var(--green); }
+  .answer-option.selected-problem { border-color: var(--red); background: #fdf0ef; color: var(--red); }
+  .answer-option.selected-partial { border-color: var(--partial); background: #fef5ec; color: var(--partial); }
+  .answer-option.selected-neutral { border-color: var(--orange); background: var(--orange-light); color: var(--orange-dark); }
+
+  /* Status badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .badge-ok { background: #eafaf1; color: var(--green); }
+  .badge-problem { background: #fdf0ef; color: var(--red); }
+  .badge-partial { background: #fef5ec; color: var(--partial); }
+  .badge-neutral { background: var(--orange-light); color: var(--orange-dark); }
+
+  /* Progress bar */
+  .progress-bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: var(--orange); transition: width .4s ease; }
+
+  /* Step indicator */
+  .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--border); color: var(--muted); transition: all .2s; flex-shrink: 0; }
+  .step-dot.active { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .step-dot.done { border-color: var(--green); background: var(--green); color: #fff; }
+  .step-line { flex: 1; height: 2px; background: var(--border); }
+  .step-line.done { background: var(--green); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+
+  /* Map containers */
+  #home-map, #schools-map, #detail-map { z-index: 0; }
+
+  /* Stats panel */
+  .stats-panel { background: var(--orange); }
+
+  /* Chart bar */
+  .chart-bar { border-radius: 4px 4px 0 0; transition: height .5s ease; }
+
+  /* Input */
+  .form-input { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; width: 100%; outline: none; transition: border-color .15s; background: #fff; }
+  .form-input:focus { border-color: var(--orange); }
+
+  /* School card */
+  .school-card:hover { background: #fdf5ed; }
+
+  /* Lbl status */
+  .lbl-resolved { color: var(--green); font-weight: 800; font-size: 11px; text-transform: uppercase; }
+  .lbl-partial { color: var(--partial); font-weight: 800; font-size: 11px; text-transform: uppercase; }
+  .lbl-not-resolved { color: var(--red); font-weight: 800; font-size: 11px; text-transform: uppercase; }
+
+  /* Tabs */
+  .tab-btn { padding: 10px 20px; font-weight: 700; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; border-bottom: 2.5px solid transparent; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .tab-btn.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; z-index: 999; background: #1a1a1a; color: #fff; padding: 14px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 10px; animation: slideUp .3s ease; }
+  @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Section header */
+  .section-header { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--orange); letter-spacing: -.02em; }
+
+  /* Animate fade in */
+  .fade-in { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Free text area */
+  textarea.form-input { resize: vertical; min-height: 80px; }
+
+  @media (max-width: 768px) {
+    .hide-mobile { display: none !important; }
+  }
+</style>
+</head>
+
+<body x-data="educheck()" x-init="init()">
+
+<!-- ═══════════════════════ TOAST ═══════════════════════ -->
+<div x-show="toast.show" x-cloak class="toast">
+  <span x-text="toast.icon"></span>
+  <span x-text="toast.msg"></span>
+</div>
+
+<!-- ═══════════════════════ NAV ═══════════════════════ -->
+<nav class="bg-white sticky top-0 z-50 shadow-sm">
+  <div class="max-w-screen-xl mx-auto px-6 flex items-center justify-between h-16">
+    <button @click="goPage('home')" class="text-3xl leading-none" style="font-family:Syne,sans-serif; font-weight:800;">
+      <span class="text-gray-900">EDU</span><span style="color:var(--orange)">CHECK</span>
+    </button>
+    <div class="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-700">
+      <button @click="goPage('home')" :class="page==='home'?'nav-active':''">
+        <span x-text="t('nav_home')"></span>
+      </button>
+      <button @click="goPage('schools')" :class="page==='schools'||page==='detail'?'nav-active':''">
+        <span x-text="t('nav_schools')"></span>
+      </button>
+      <button @click="goPage('analytics')" :class="page==='analytics'?'nav-active':''">
+        <span x-text="t('nav_analytics')"></span>
+      </button>
+      <button @click="goPage('monitor')" :class="page==='monitor'||page==='monitor-form'?'nav-active':''"
+              class="btn-primary px-4 py-2 rounded-lg text-xs" style="background:var(--orange);color:#fff;">
+        <span x-text="t('nav_monitor')"></span>
+      </button>
+      <button @click="toggleLang()" class="btn-ghost px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
+        🌐 <span x-text="lang==='en'?'FR':'EN'"></span>
+      </button>
+    </div>
+    <button @click="mobileMenu=!mobileMenu" class="md:hidden p-2 text-gray-700">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+  <div class="nav-rule"></div>
+  <div x-show="mobileMenu" x-cloak class="md:hidden bg-white border-t px-6 py-4 space-y-2 text-sm font-semibold text-gray-800">
+    <button @click="goPage('home'); mobileMenu=false" class="block w-full text-left py-2" x-text="t('nav_home')"></button>
+    <button @click="goPage('schools'); mobileMenu=false" class="block w-full text-left py-2" x-text="t('nav_schools')"></button>
+    <button @click="goPage('analytics'); mobileMenu=false" class="block w-full text-left py-2" x-text="t('nav_analytics')"></button>
+    <button @click="goPage('monitor'); mobileMenu=false" class="block w-full text-left py-2" x-text="t('nav_monitor')"></button>
+    <button @click="toggleLang()" class="block text-left py-2 text-orange-600">🌐 <span x-text="lang==='en'?'Switch to FR':'Passer en EN'"></span></button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ HOME ═══════════════════════ -->
+<div x-show="page==='home'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-10 pb-6">
+    <p class="text-xl sm:text-2xl font-black text-gray-900 leading-snug max-w-3xl" style="font-family:Syne,sans-serif;">
+      <span x-text="t('home_mission')"></span>
+    </p>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10">
+    <div class="flex flex-col lg:flex-row border-2 rounded-xl overflow-hidden" style="border-color:var(--orange)">
+      <div class="flex-1"><div id="home-map" style="height:480px;width:100%;"></div></div>
+      <div class="stats-panel text-white flex flex-col items-center justify-evenly py-10 px-8 gap-8" style="min-width:220px">
+        <div class="text-center">
+          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="schools.length"></p>
+          <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_schools')"></p>
+        </div>
+        <div class="text-center">
+          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="totalIssues"></p>
+          <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_problems')"></p>
+        </div>
+        <div class="text-center">
+          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="totalFixed"></p>
+          <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_fixed')"></p>
+        </div>
+        <div class="text-center">
+          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="Math.round(totalFixed/Math.max(totalIssues,1)*100)+'%'"></p>
+          <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_resolved')"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Recent Monitoring Submissions -->
+  <div class="max-w-screen-xl mx-auto px-6 pb-10">
+    <h2 class="section-header mb-5" x-text="t('home_recent')"></h2>
+    <div x-show="allSubmissions.length===0" class="card p-8 text-center text-gray-400">
+      <p class="text-3xl mb-2">📋</p>
+      <p class="font-semibold" x-text="t('no_reports')"></p>
+      <button @click="goPage('monitor')" class="btn-primary mt-4 px-5 py-2.5" x-text="t('start_monitoring')"></button>
+    </div>
+    <div x-show="allSubmissions.length>0" class="grid md:grid-cols-3 gap-4">
+      <template x-for="sub in allSubmissions.slice(-6).reverse()" :key="sub.id">
+        <div class="card card-hover p-4 cursor-pointer" @click="viewSubmission(sub)">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <span class="badge" :class="sub.type==='service'?'badge-neutral':sub.type==='infrastructure'?'badge-partial':'badge-ok'"
+                  x-text="sub.type==='service'?t('form_service'):sub.type==='infrastructure'?t('form_infra'):t('form_survey')"></span>
+            <span class="text-xs text-gray-400" x-text="formatDate(sub.date)"></span>
+          </div>
+          <p class="font-bold text-sm mb-1" x-text="getSchool(sub.schoolId)?.name || '—'"></p>
+          <p class="text-xs text-gray-500 mb-3" x-text="getSchool(sub.schoolId)?.location || ''"></p>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="text-red-600 font-bold">⚠ <span x-text="sub.problemCount"></span> <span x-text="t('problems')"></span></span>
+            <span class="text-green-600 font-bold">✓ <span x-text="sub.okCount"></span> <span x-text="t('ok')"></span></span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+  <div x-show="allSubmissions.length>0" class="max-w-screen-xl mx-auto px-6 pb-8">
+    <div class="card p-5">
+      <h3 class="font-bold text-sm mb-4 text-gray-500 uppercase tracking-widest" x-text="t('problem_categories')"></h3>
+      <div class="flex gap-4 items-end h-28 overflow-x-auto pb-2">
+        <template x-for="cat in categoryStats" :key="cat.label">
+          <div class="flex flex-col items-center gap-1 min-w-[56px]">
+            <span class="text-xs font-black" style="color:var(--orange)" x-text="cat.count"></span>
+            <div class="chart-bar w-10" :style="'height:'+Math.max(8,cat.count/Math.max(...categoryStats.map(c=>c.count))*80)+'px;background:var(--orange);opacity:'+(0.4+cat.count/Math.max(...categoryStats.map(c=>c.count))*0.6)"></div>
+            <span class="text-[10px] text-gray-500 text-center leading-tight" x-text="cat.label" style="max-width:56px"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+  <footer class="border-t py-8 mt-4" style="border-color:var(--border)">
+    <div class="max-w-screen-xl mx-auto px-6 grid grid-cols-3 gap-6 items-center text-sm text-gray-500">
+      <div><p class="mb-3 text-xs uppercase tracking-widest" x-text="t('implemented_by')"></p>
+        <div class="w-16 h-16 rounded-full border-2 border-gray-300 flex items-center justify-center text-[10px] font-bold text-gray-400 text-center leading-tight">CERC<br>LOGO</div></div>
+      <div class="text-center"><p class="mb-3 text-xs uppercase tracking-widest" x-text="t('support_from')"></p>
+        <div class="flex items-center justify-center gap-5">
+          <div><p class="font-black text-sm text-gray-900">EDUCATIONOUT<span style="color:var(--orange)">LOUD</span></p>
+            <p class="text-[10px] text-gray-400">advocacy &amp; social accountability</p></div>
+          <div><p class="font-black text-lg text-gray-900">GP<span style="color:var(--orange)">E</span></p>
+            <p class="text-[10px] text-gray-400 leading-tight">Transforming<br>Education</p></div>
+        </div></div>
+      <div class="text-right"><p class="mb-3 text-xs uppercase tracking-widest" x-text="t('developed_by')"></p>
+        <p class="font-black text-xl text-gray-900">True <span class="inline-block border-2 border-gray-900 text-base px-1">✳</span></p>
+        <p class="font-black text-xl text-gray-900">Footprint</p></div>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════ SCHOOLS ═══════════════════════ -->
+<div x-show="page==='schools'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-3">
+    <h1 class="section-header" x-text="t('nav_schools')"></h1>
+    <p class="text-sm font-medium mt-1 text-gray-500" x-text="t('schools_sub')"></p>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10">
+    <div class="flex flex-col lg:flex-row border-2 rounded-xl overflow-hidden" style="border-color:var(--orange)">
+      <div class="flex-1"><div id="schools-map" style="height:560px;width:100%;"></div></div>
+      <div class="flex flex-col border-t lg:border-t-0 lg:border-l-2" style="width:100%;max-width:340px;border-color:var(--orange)">
+        <div class="p-3 border-b" style="border-color:var(--orange)">
+          <input type="text" x-model="searchQuery" :placeholder="t('search_schools')"
+            class="form-input text-center font-bold tracking-widest uppercase" style="font-size:12px;color:var(--orange)">
+        </div>
+        <div class="p-2 border-b flex gap-2 flex-wrap" style="border-color:var(--orange)">
+          <template x-for="prov in [''].concat(provinces)" :key="prov">
+            <button @click="filterProvince=prov"
+              class="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
+              :class="filterProvince===prov?'bg-orange-500 text-white':'bg-gray-100 text-gray-600 hover:bg-orange-50'"
+              style="font-size:11px"
+              x-text="prov||t('all_provinces')"></button>
+          </template>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+          <div class="divide-y" style="border-color:var(--border)">
+            <template x-for="school in filteredSchools" :key="school.id">
+              <div class="p-3 cursor-pointer school-card transition" @click="openSchool(school)">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="font-black text-sm leading-tight" style="color:var(--orange)" x-text="school.name"></h3>
+                  <span class="badge shrink-0" :class="getSchoolHealth(school.id).color" x-text="getSchoolHealth(school.id).label"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 mb-1.5" x-text="school.location"></p>
+                <div class="flex items-center gap-3 text-xs text-gray-400">
+                  <span>👁 <span x-text="getSubmissionCount(school.id)"></span> <span x-text="t('reports')"></span></span>
+                  <span x-text="school.lastMonitoring.split('by')[0]"></span>
+                </div>
+              </div>
+            </template>
+            <div x-show="filteredSchools.length===0" class="p-6 text-center text-gray-400 text-sm" x-text="t('no_schools')"></div>
+          </div>
+        </div>
+        <div class="p-3 border-t" style="border-color:var(--orange)">
+          <button @click="goPage('monitor')" class="btn-primary w-full py-2.5" x-text="t('monitor_school')"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DETAIL ═══════════════════════ -->
+<div x-show="page==='detail'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-3">
+    <h1 class="section-header" x-text="t('nav_schools')"></h1>
+  </div>
+  <template x-if="selectedSchool !== null">
+    <div class="max-w-screen-xl mx-auto px-6 pb-10">
+      <div class="flex flex-col lg:flex-row border-2 rounded-xl overflow-hidden" style="border-color:var(--orange)">
+        <div style="flex:1 1 55%;min-height:400px;"><div id="detail-map" style="height:600px;width:100%;"></div></div>
+        <div class="flex flex-col border-t lg:border-t-0 lg:border-l-2 overflow-y-auto" style="flex:1 1 45%;border-color:var(--orange);max-height:600px;">
+          <div class="p-4 border-b" style="border-color:var(--orange)">
+            <div class="flex items-start justify-between gap-2">
+              <h2 class="text-xl font-black" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="selectedSchool.name"></h2>
+              <span class="badge shrink-0" :class="getSchoolHealth(selectedSchool.id).color" x-text="getSchoolHealth(selectedSchool.id).label"></span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1" x-text="selectedSchool.location"></p>
+            <div class="flex flex-wrap gap-3 mt-2 text-xs font-semibold text-gray-600">
+              <span>👨‍🎓 <span x-text="selectedSchool.students"></span> students</span>
+              <span>👧 <span x-text="selectedSchool.girls"></span> girls</span>
+              <span>👦 <span x-text="selectedSchool.boys"></span> boys</span>
+              <span>💰 <span x-text="selectedSchool.budget"></span></span>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="flex border-b overflow-x-auto" style="border-color:var(--border)">
+            <button class="tab-btn" :class="detailTab==='overview'?'active':''" @click="detailTab='overview'" x-text="t('tab_overview')"></button>
+            <button class="tab-btn" :class="detailTab==='reports'?'active':''" @click="detailTab='reports'">
+              <span x-text="t('tab_reports')"></span>
+              <span x-show="getSchoolSubmissions(selectedSchool.id).length>0" class="ml-1.5 bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded-full" x-text="getSchoolSubmissions(selectedSchool.id).length"></span>
+            </button>
+            <button class="tab-btn" :class="detailTab==='survey'?'active':''" @click="detailTab='survey'" x-text="t('tab_survey')"></button>
+          </div>
+
+          <!-- Overview tab -->
+          <div x-show="detailTab==='overview'" class="p-4 space-y-4">
+            <img :src="selectedSchool.photo" :alt="selectedSchool.name" class="w-full object-cover rounded-lg" style="height:130px"
+              onerror="this.src='https://placehold.co/440x130/f5e6d8/C87533?text=School+Photo'">
+            <p class="text-xs text-gray-600 leading-relaxed" x-text="selectedSchool.description"></p>
+            <div class="card p-3">
+              <p class="text-xs font-black uppercase tracking-widest text-gray-400 mb-3" x-text="t('effectiveness')"></p>
+              <div class="flex gap-4 text-xs font-bold flex-wrap mb-3">
+                <span>⚠ <span x-text="getTotalProblems(selectedSchool.id)"></span> <span x-text="t('problems')"></span></span>
+                <span class="text-green-600">✓ <span x-text="getTotalOk(selectedSchool.id)"></span> <span x-text="t('ok')"></span></span>
+                <span>📋 <span x-text="getSubmissionCount(selectedSchool.id)"></span> <span x-text="t('reports')"></span></span>
+              </div>
+              <template x-if="getSubmissionCount(selectedSchool.id)>0">
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span x-text="t('fix_rate')"></span>
+                    <span class="font-bold" x-text="getFixRate(selectedSchool.id)+'%'"></span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" :style="'width:'+getFixRate(selectedSchool.id)+'%'"></div></div>
+                </div>
+              </template>
+            </div>
+            <div>
+              <p class="text-xs font-black uppercase tracking-widest text-gray-400 mb-2" x-text="t('monitored_by')"></p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="m in selectedSchool.monitorsList" :key="m">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black" style="background:var(--orange)" x-text="m.charAt(0)"></div>
+                    <span class="text-xs font-medium" x-text="m"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reports tab -->
+          <div x-show="detailTab==='reports'" class="p-4 space-y-3">
+            <div x-show="getSchoolSubmissions(selectedSchool.id).length===0" class="text-center py-8 text-gray-400">
+              <p class="text-2xl mb-2">📝</p>
+              <p class="text-sm" x-text="t('no_reports_yet')"></p>
+              <button @click="startMonitor(selectedSchool)" class="btn-primary mt-3 px-4 py-2 text-xs" x-text="t('monitor_this')"></button>
+            </div>
+            <template x-for="sub in getSchoolSubmissions(selectedSchool.id)" :key="sub.id">
+              <div class="card p-3 cursor-pointer card-hover" @click="viewSubmission(sub)">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="badge" :class="sub.type==='service'?'badge-neutral':sub.type==='infrastructure'?'badge-partial':'badge-ok'"
+                    x-text="sub.type==='service'?t('form_service'):sub.type==='infrastructure'?t('form_infra'):t('form_survey')"></span>
+                  <span class="text-xs text-gray-400" x-text="formatDate(sub.date)"></span>
+                </div>
+                <div class="flex gap-3 text-xs">
+                  <span class="text-red-600 font-bold">⚠ <span x-text="sub.problemCount"></span></span>
+                  <span class="text-green-600 font-bold">✓ <span x-text="sub.okCount"></span></span>
+                  <span x-show="sub.monitorName" class="text-gray-400">by <span x-text="sub.monitorName"></span></span>
+                </div>
+                <!-- Mini problem list -->
+                <div x-show="sub.problemQuestions && sub.problemQuestions.length>0" class="mt-2 space-y-1">
+                  <template x-for="q in sub.problemQuestions.slice(0,2)" :key="q">
+                    <p class="text-[11px] text-red-500 leading-tight">• <span x-text="q"></span></p>
+                  </template>
+                  <p x-show="sub.problemQuestions.length>2" class="text-[11px] text-gray-400" x-text="'+' + (sub.problemQuestions.length-2) + ' ' + t('more')"></p>
+                </div>
+              </div>
+            </template>
+            <button @click="startMonitor(selectedSchool)" class="btn-outline w-full py-2.5 text-xs" x-text="t('add_report')"></button>
+          </div>
+
+          <!-- Survey tab -->
+          <div x-show="detailTab==='survey'" class="p-4 space-y-3">
+            <div x-show="getSurveySubmissions(selectedSchool.id).length===0" class="text-center py-8 text-gray-400">
+              <p class="text-2xl mb-2">📊</p>
+              <p class="text-sm" x-text="t('no_survey_yet')"></p>
+            </div>
+            <template x-if="getSurveySubmissions(selectedSchool.id).length>0">
+              <div class="space-y-3">
+                <p class="text-xs text-gray-400" x-text="getSurveySubmissions(selectedSchool.id).length + ' ' + t('survey_responses')"></p>
+                <template x-for="q in getSurveyStats(selectedSchool.id)" :key="q.question">
+                  <div class="card p-3">
+                    <p class="text-xs font-semibold text-gray-700 mb-2 leading-snug" x-text="q.question"></p>
+                    <template x-for="ans in q.answers" :key="ans.label">
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="flex-1 progress-bar"><div class="progress-fill" :style="'width:'+ans.pct+'%;background:'+(ans.isProblem?'var(--red)':'var(--green)')"></div></div>
+                        <span class="text-xs font-bold w-8 text-right" x-text="ans.pct+'%'"></span>
+                        <span class="text-xs text-gray-500 w-24 truncate" x-text="ans.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button @click="goPage('schools')" class="btn-ghost px-4 py-2 text-sm" style="color:var(--orange);border-color:var(--orange)">← <span x-text="t('back_schools')"></span></button>
+        <button @click="startMonitor(selectedSchool)" class="btn-primary px-5 py-2.5 text-sm" x-text="t('monitor_this')"></button>
+      </div>
+    </div>
+  </template>
+</div>
+
+<!-- ═══════════════════════ ANALYTICS ═══════════════════════ -->
+<div x-show="page==='analytics'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-4">
+    <h1 class="section-header" x-text="t('nav_analytics')"></h1>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10 space-y-6">
+    <!-- KPIs -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card p-5 text-center" style="background:var(--orange)">
+        <p class="text-5xl font-black text-white leading-none" style="font-family:Syne,sans-serif;" x-text="schools.length"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-white opacity-80" x-text="t('stat_schools')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black leading-none" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="totalIssues"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('stat_problems')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black leading-none text-green-600" style="font-family:Syne,sans-serif;" x-text="allSubmissions.length"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('total_reports')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black leading-none" style="font-family:Syne,sans-serif;" :class="overallFixRate>=50?'text-green-600':'text-red-600'" x-text="overallFixRate+'%'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('stat_resolved')"></p>
+      </div>
+    </div>
+
+    <!-- Province table -->
+    <div class="card p-5">
+      <h2 class="font-black text-base mb-4" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="t('by_province')"></h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-black text-gray-400 uppercase tracking-widest border-b" style="border-color:var(--border)">
+              <th class="pb-3 pr-4" x-text="t('province')"></th>
+              <th class="pb-3 pr-4 text-center" x-text="t('schools_col')"></th>
+              <th class="pb-3 pr-4 text-center" x-text="t('reports_col')"></th>
+              <th class="pb-3 pr-4 text-center" x-text="t('problems_col')"></th>
+              <th class="pb-3" x-text="t('fix_rate')"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="prov in provinceStats" :key="prov.name">
+              <tr class="border-b hover:bg-orange-50 transition" style="border-color:var(--border)">
+                <td class="py-3 pr-4 font-semibold" x-text="prov.name"></td>
+                <td class="py-3 pr-4 text-center" x-text="prov.schools"></td>
+                <td class="py-3 pr-4 text-center" x-text="prov.reports"></td>
+                <td class="py-3 pr-4 text-center font-bold text-red-500" x-text="prov.issues"></td>
+                <td class="py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 progress-bar" style="min-width:80px">
+                      <div class="progress-fill" :style="'width:'+prov.rate+'%;background:'+(prov.rate>=70?'var(--green)':prov.rate>=40?'var(--orange)':'var(--red)')"></div>
+                    </div>
+                    <span class="font-black text-xs w-10" :style="'color:'+(prov.rate>=70?'var(--green)':prov.rate>=40?'var(--orange)':'var(--red)')" x-text="prov.rate+'%'"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Top issues -->
+    <div class="card p-5">
+      <h2 class="font-black text-base mb-4" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="t('top_issues')"></h2>
+      <div x-show="allSubmissions.length===0" class="text-center py-6 text-gray-400 text-sm" x-text="t('no_data_yet')"></div>
+      <div x-show="allSubmissions.length>0" class="space-y-2">
+        <template x-for="issue in topIssues" :key="issue.q">
+          <div class="flex items-center gap-3">
+            <div class="flex-1 text-xs text-gray-700 leading-snug" x-text="issue.q"></div>
+            <div class="flex-shrink-0 flex items-center gap-2" style="min-width:120px">
+              <div class="progress-bar flex-1"><div class="progress-fill" :style="'width:'+issue.pct+'%;background:var(--red)'"></div></div>
+              <span class="text-xs font-black text-red-500 w-12 text-right" x-text="issue.count + ' (' + issue.pct + '%)'"></span>
+            </div>
+          </div>
+        </template>
+        <div x-show="topIssues.length===0" class="text-center py-4 text-gray-400 text-sm" x-text="t('no_data_yet')"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MONITOR - SELECT ═══════════════════════ -->
+<div x-show="page==='monitor'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-4">
+    <h1 class="section-header" x-text="t('nav_monitor')"></h1>
+    <p class="text-sm text-gray-500 mt-1" x-text="t('monitor_sub')"></p>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-12">
+    <div class="grid lg:grid-cols-2 gap-8">
+      <!-- Choose school -->
+      <div>
+        <h2 class="font-black text-sm uppercase tracking-widest text-gray-400 mb-3" x-text="t('select_school')"></h2>
+        <div class="space-y-2">
+          <input type="text" x-model="monitorSearch" :placeholder="t('search_schools')" class="form-input mb-2">
+          <div class="border-2 rounded-xl overflow-hidden" style="border-color:var(--border);max-height:320px;overflow-y:auto;">
+            <template x-for="school in monitorFilteredSchools" :key="school.id">
+              <div class="p-3 cursor-pointer flex items-center gap-3 transition border-b hover:bg-orange-50"
+                   :class="monitorSchoolId===school.id?'bg-orange-50 border-l-4':'border-l-4 border-l-transparent'"
+                   :style="monitorSchoolId===school.id?'border-left-color:var(--orange)':''"
+                   @click="monitorSchoolId=school.id" style="border-bottom-color:var(--border)">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style="background:var(--orange)">
+                  <span x-text="school.name.charAt(0)"></span>
+                </div>
+                <div>
+                  <p class="font-bold text-sm" x-text="school.name"></p>
+                  <p class="text-xs text-gray-400" x-text="school.location"></p>
+                </div>
+                <div x-show="monitorSchoolId===school.id" class="ml-auto text-orange-500 text-lg">✓</div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <!-- Choose form type + monitor name -->
+      <div class="space-y-6">
+        <div>
+          <h2 class="font-black text-sm uppercase tracking-widest text-gray-400 mb-3" x-text="t('select_form_type')"></h2>
+          <div class="space-y-2">
+            <template x-for="ft in formTypes" :key="ft.id">
+              <div class="card card-hover p-4 cursor-pointer transition"
+                   :class="monitorFormType===ft.id?'border-orange-400 bg-orange-50':''"
+                   @click="monitorFormType=ft.id">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl" x-text="ft.icon"></span>
+                  <div>
+                    <p class="font-bold text-sm" x-text="ft.name[lang]"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="ft.desc[lang]"></p>
+                  </div>
+                  <div x-show="monitorFormType===ft.id" class="ml-auto text-orange-500 text-lg">✓</div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div>
+          <label class="font-black text-sm uppercase tracking-widest text-gray-400 block mb-2" x-text="t('monitor_name')"></label>
+          <input type="text" x-model="monitorName" :placeholder="t('monitor_name_ph')" class="form-input">
+        </div>
+        <button @click="startForm()"
+          :disabled="!monitorSchoolId || !monitorFormType"
+          class="btn-primary w-full py-3 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          x-text="t('start_form')"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MONITOR - FORM ═══════════════════════ -->
+<div x-show="page==='monitor-form'" x-cloak class="fade-in">
+  <div class="max-w-2xl mx-auto px-4 pt-8 pb-12">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-6">
+      <button @click="goPage('monitor')" class="text-gray-400 hover:text-gray-700 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div>
+        <h1 class="font-black text-lg leading-tight" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="getSchool(monitorSchoolId)?.name"></h1>
+        <p class="text-xs text-gray-400" x-text="formTypes.find(f=>f.id===monitorFormType)?.name[lang]"></p>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between text-xs text-gray-400 mb-2">
+        <span x-text="t('question') + ' ' + (currentQ+1) + ' / ' + activeQuestions.length"></span>
+        <span x-text="Math.round((currentQ/Math.max(activeQuestions.length,1))*100) + '%'"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" :style="'width:'+Math.round((currentQ/Math.max(activeQuestions.length,1))*100)+'%'"></div></div>
+    </div>
+
+    <!-- Current question -->
+    <template x-if="activeQuestions[currentQ]">
+      <div class="card p-6 mb-4">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style="background:var(--orange)" x-text="currentQ+1"></span>
+          <p class="font-semibold text-sm text-gray-800 leading-snug" x-text="activeQuestions[currentQ].q[lang]"></p>
+        </div>
+        <p x-show="activeQuestions[currentQ].note" class="text-xs text-gray-400 mb-3 italic" x-text="activeQuestions[currentQ].note"></p>
+
+        <!-- Multiple choice -->
+        <div x-show="activeQuestions[currentQ].type==='choice'" class="space-y-2">
+          <template x-for="opt in activeQuestions[currentQ].options" :key="opt.label">
+            <button @click="selectAnswer(activeQuestions[currentQ].id, opt)"
+              class="answer-option w-full text-left"
+              :class="getAnswerClass(activeQuestions[currentQ].id, opt)">
+              <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                    :class="formAnswers[activeQuestions[currentQ].id]?.label===opt.label?'border-current':'border-gray-300'">
+                <span x-show="formAnswers[activeQuestions[currentQ].id]?.label===opt.label" class="w-2 h-2 rounded-full bg-current"></span>
+              </span>
+              <span x-text="opt.label[lang] || opt.label['en']"></span>
+            </button>
+          </template>
+        </div>
+
+        <!-- Free text -->
+        <div x-show="activeQuestions[currentQ].type==='text'">
+          <textarea class="form-input" rows="4" :placeholder="t('free_text_ph')"
+            @input="formAnswers[activeQuestions[currentQ].id] = {label:{en:$event.target.value,fr:$event.target.value}, isProblem: false, isFreeText: true}"
+            x-text="formAnswers[activeQuestions[currentQ].id]?.label?.en || ''"></textarea>
+        </div>
+
+        <!-- Photo upload note -->
+        <div x-show="formAnswers[activeQuestions[currentQ].id]?.isProblem" class="mt-3 p-2.5 rounded-lg text-xs text-red-600 font-medium" style="background:#fdf0ef">
+          ⚠ <span x-text="t('problem_flag')"></span>
+        </div>
+      </div>
+    </template>
+
+    <!-- Navigation -->
+    <div class="flex gap-3">
+      <button @click="prevQ()" x-show="currentQ>0" class="btn-ghost flex-1 py-3" x-text="t('previous')"></button>
+      <button @click="nextQ()"
+        x-show="currentQ < activeQuestions.length-1"
+        :disabled="!formAnswers[activeQuestions[currentQ]?.id]"
+        class="btn-primary flex-1 py-3 disabled:opacity-40"
+        x-text="t('next')"></button>
+      <button @click="submitForm()"
+        x-show="currentQ === activeQuestions.length-1"
+        :disabled="!formAnswers[activeQuestions[currentQ]?.id]"
+        class="btn-primary flex-1 py-3 disabled:opacity-40"
+        x-text="t('submit')"></button>
+    </div>
+
+    <!-- Answered pills -->
+    <div class="mt-6 flex flex-wrap gap-1.5">
+      <template x-for="(q,i) in activeQuestions" :key="q.id">
+        <button @click="jumpToQ(i)"
+          class="w-7 h-7 rounded-full text-xs font-bold transition-all border"
+          :class="i===currentQ?'border-orange-400 bg-orange-500 text-white':formAnswers[q.id]?'border-green-300 bg-green-50 text-green-700':'border-gray-200 bg-white text-gray-400'"
+          x-text="i+1"></button>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SUBMISSION REVIEW ═══════════════════════ -->
+<div x-show="page==='submission'" x-cloak class="fade-in">
+  <div class="max-w-2xl mx-auto px-4 pt-8 pb-12">
+    <template x-if="viewedSub">
+      <div>
+        <div class="flex items-center gap-3 mb-6">
+          <button @click="history.back()" @click.prevent="goPage(prevPage)" class="text-gray-400 hover:text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div>
+            <h1 class="font-black text-lg" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="getSchool(viewedSub.schoolId)?.name"></h1>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="badge" :class="viewedSub.type==='service'?'badge-neutral':viewedSub.type==='infrastructure'?'badge-partial':'badge-ok'"
+                    x-text="viewedSub.type==='service'?t('form_service'):viewedSub.type==='infrastructure'?t('form_infra'):t('form_survey')"></span>
+              <span class="text-xs text-gray-400" x-text="formatDate(viewedSub.date)"></span>
+              <span x-show="viewedSub.monitorName" class="text-xs text-gray-400">· <span x-text="viewedSub.monitorName"></span></span>
+            </div>
+          </div>
+        </div>
+        <!-- Summary -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="card p-3 text-center">
+            <p class="text-2xl font-black text-red-500" style="font-family:Syne,sans-serif;" x-text="viewedSub.problemCount"></p>
+            <p class="text-xs text-gray-400 mt-1" x-text="t('problems')"></p>
+          </div>
+          <div class="card p-3 text-center">
+            <p class="text-2xl font-black text-green-600" style="font-family:Syne,sans-serif;" x-text="viewedSub.okCount"></p>
+            <p class="text-xs text-gray-400 mt-1" x-text="t('ok')"></p>
+          </div>
+          <div class="card p-3 text-center">
+            <p class="text-2xl font-black" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="viewedSub.answers ? Object.keys(viewedSub.answers).length : 0"></p>
+            <p class="text-xs text-gray-400 mt-1" x-text="t('answered')"></p>
+          </div>
+        </div>
+        <!-- Answers -->
+        <div class="space-y-2">
+          <template x-for="qa in getSubAnswers(viewedSub)" :key="qa.qid">
+            <div class="card p-3 flex items-start gap-3">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 mt-0.5"
+                    :style="'background:'+(qa.isProblem?'var(--red)':'var(--green)')">
+                <span x-text="qa.isProblem?'!':'✓'"></span>
+              </span>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-600 leading-snug mb-0.5" x-text="qa.question"></p>
+                <p class="text-xs font-bold" :class="qa.isProblem?'text-red-500':'text-green-600'" x-text="qa.answer"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="mt-6 flex gap-3">
+          <button @click="goPage(prevPage || 'home')" class="btn-ghost flex-1 py-2.5 text-sm" x-text="t('back')"></button>
+          <button @click="startMonitor(getSchool(viewedSub.schoolId))" class="btn-outline flex-1 py-2.5 text-sm" x-text="t('monitor_again')"></button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+// ── API Base URL ──────────────────────────────────────────────────────────────
+// In production, set window.EDUCHECK_API_URL before this script, or replace
+// the string below with your Digital Ocean server address.
+// e.g.  const API = 'https://api.yourdomain.com';
+const API = window.EDUCHECK_API_URL || 'http://localhost:3000';
+
+// ── TRANSLATIONS ──────────────────────────────────────────────────────────────
+const I18N = {
+  en: {
+    nav_home:'Home', nav_schools:'Schools Monitored', nav_analytics:'Data Analytics', nav_monitor:'Monitor a School',
+    home_mission:'CERC supports the Ministry of Primary and Secondary Education in the implementation of inclusive and quality education for all.',
+    home_recent:'Recent Monitoring Reports',
+    stat_schools:'Schools Monitored', stat_problems:'Problems Found', stat_fixed:'Problems Fixed', stat_resolved:'Issues Resolved',
+    total_reports:'Monitoring Reports',
+    schools_sub:'Click on a school on the map or in the list to view its information.',
+    search_schools:'SEARCH SCHOOLS', all_provinces:'All Provinces',
+    effectiveness:'Effectiveness of Monitoring',
+    monitored_by:'Monitored By', fix_rate:'Fix Rate',
+    tab_overview:'Overview', tab_reports:'Reports', tab_survey:'Student Survey',
+    back_schools:'Back to schools', monitor_this:'Monitor This School',
+    add_report:'+ Add New Report', no_reports_yet:'No reports yet for this school.',
+    no_survey_yet:'No student surveys submitted yet.', survey_responses:'student survey responses',
+    by_province:'Performance by Province',
+    province:'Province', schools_col:'Schools', reports_col:'Reports', problems_col:'Issues Found',
+    top_issues:'Most Frequently Reported Issues',
+    no_data_yet:'No monitoring data yet. Start monitoring schools to see analytics.',
+    monitor_sub:'Select a school and a monitoring form type to begin.',
+    select_school:'1. Select School', select_form_type:'2. Choose Form Type', monitor_name:'3. Your Name (optional)',
+    monitor_name_ph:'Monitor name or ID...', start_form:'Start Monitoring →',
+    form_service:'Service & Teaching', form_infra:'Infrastructure', form_survey:'Student Survey',
+    question:'Question', previous:'← Previous', next:'Next →', submit:'Submit Report',
+    problem_flag:'This answer will be flagged as a problem in the system.',
+    free_text_ph:'Write your observation here...',
+    no_reports:'No monitoring reports yet.', start_monitoring:'Start Monitoring',
+    problems:'problems', ok:'OK', reports:'reports',
+    back:'← Back', monitor_again:'Monitor Again',
+    answered:'Answered', more:'more',
+    problem_categories:'Issues by Category',
+    implemented_by:'Implemented by', support_from:'With the generous support from', developed_by:'Developed by',
+    no_schools:'No schools found.',
+    monitor_school:'Monitor a School',
+    loading:'Loading…', error_loading:'Failed to load data. Please check your connection.',
+    submitting:'Submitting…',
+  },
+  fr: {
+    nav_home:'Accueil', nav_schools:'Écoles Surveillées', nav_analytics:'Analyse des Données', nav_monitor:'Surveiller une École',
+    home_mission:"Le CERC soutient le Ministère de l'Enseignement Primaire et Secondaire dans la mise en œuvre d'une éducation inclusive et de qualité pour tous.",
+    home_recent:'Rapports de surveillance récents',
+    stat_schools:'Écoles surveillées', stat_problems:'Problèmes trouvés', stat_fixed:'Problèmes résolus', stat_resolved:'Problèmes résolus',
+    total_reports:'Rapports de surveillance',
+    schools_sub:"Cliquez sur une école sur la carte ou dans la liste pour voir ses informations.",
+    search_schools:'RECHERCHER DES ÉCOLES', all_provinces:'Toutes les provinces',
+    effectiveness:'Efficacité de la surveillance',
+    monitored_by:'Surveillé par', fix_rate:'Taux de résolution',
+    tab_overview:'Vue d\'ensemble', tab_reports:'Rapports', tab_survey:'Enquête étudiants',
+    back_schools:'Retour aux écoles', monitor_this:'Surveiller cette école',
+    add_report:'+ Ajouter un rapport', no_reports_yet:'Aucun rapport pour cette école.',
+    no_survey_yet:'Aucune enquête étudiant soumise.', survey_responses:'réponses à l\'enquête',
+    by_province:'Performance par province',
+    province:'Province', schools_col:'Écoles', reports_col:'Rapports', problems_col:'Problèmes',
+    top_issues:'Problèmes les plus fréquemment signalés',
+    no_data_yet:'Pas encore de données. Commencez à surveiller les écoles.',
+    monitor_sub:'Sélectionnez une école et un type de formulaire pour commencer.',
+    select_school:'1. Sélectionner une école', select_form_type:'2. Type de formulaire', monitor_name:'3. Votre nom (optionnel)',
+    monitor_name_ph:'Nom ou ID du moniteur...', start_form:'Commencer →',
+    form_service:'Services & Enseignement', form_infra:'Infrastructure', form_survey:'Enquête étudiants',
+    question:'Question', previous:'← Précédent', next:'Suivant →', submit:'Soumettre le rapport',
+    problem_flag:'Cette réponse sera signalée comme problème dans le système.',
+    free_text_ph:'Écrivez votre observation ici...',
+    no_reports:'Aucun rapport de surveillance.', start_monitoring:'Commencer la surveillance',
+    problems:'problèmes', ok:'OK', reports:'rapports',
+    back:'← Retour', monitor_again:'Surveiller à nouveau',
+    answered:'Répondues', more:'autres',
+    problem_categories:'Problèmes par catégorie',
+    implemented_by:'Mis en œuvre par', support_from:'Avec le soutien généreux de', developed_by:'Développé par',
+    no_schools:'Aucune école trouvée.',
+    monitor_school:'Surveiller une école',
+    loading:'Chargement…', error_loading:'Échec du chargement. Vérifiez votre connexion.',
+    submitting:'Envoi en cours…',
+  }
+};
+
+const CAT_LABELS = {
+  en: {infrastructure:'Infrastructure',hygiene:'Hygiene & Water',safety:'Safety',inclusion:'Inclusion',
+    teaching:'Teaching',resources:'Resources',integrity:'Integrity',management:'Management',
+    governance:'Governance',materials:'Materials',quality:'Construction Quality',environment:'Environment',
+    corruption:'Corruption',finance:'Finance',labour:'Labour',transparency:'Transparency',
+    community:'Community',demographics:'Demographics',participation:'Participation',
+    awareness:'Awareness',relevance:'Relevance',satisfaction:'Satisfaction',other:'Other'},
+  fr: {infrastructure:'Infrastructure',hygiene:'Hygiène & Eau',safety:'Sécurité',inclusion:'Inclusion',
+    teaching:'Enseignement',resources:'Ressources',integrity:'Intégrité',management:'Gestion',
+    governance:'Gouvernance',materials:'Matériaux',quality:'Qualité construction',environment:'Environnement',
+    corruption:'Corruption',finance:'Finance',labour:'Main-d\'œuvre',transparency:'Transparence',
+    community:'Communauté',demographics:'Démographie',participation:'Participation',
+    awareness:'Sensibilisation',relevance:'Pertinence',satisfaction:'Satisfaction',other:'Autre'}
+};
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function educheck() {
+  return {
+    // ── Navigation ──
+    page: 'home',
+    prevPage: 'home',
+    lang: 'en',
+    mobileMenu: false,
+
+    // ── Data (populated from API) ──
+    schools: [],
+    allSubmissions: [],
+    questionsCache: {},   // { service: [...], infrastructure: [...], survey: [...] }
+
+    // ── Loading / error states ──
+    loadingSchools: true,
+    loadingSubmissions: true,
+    loadingQuestions: false,
+    submitting: false,
+    apiError: null,
+
+    // ── UI state ──
+    selectedSchool: null,
+    detailTab: 'overview',
+    searchQuery: '',
+    filterProvince: '',
+    monitorSearch: '',
+    monitorSchoolId: null,
+    monitorFormType: null,
+    monitorName: '',
+    currentQ: 0,
+    formAnswers: {},
+    viewedSub: null,
+    toast: { show: false, msg: '', icon: '' },
+    homeMap: null, schoolsMap: null, detailMap: null,
+
+    formTypes: [
+      { id:'service',        icon:'📋',
+        name:{en:'Service & Teaching Monitoring',fr:'Surveillance des Services & Enseignement'},
+        desc:{en:'Questions on infrastructure, hygiene, teaching quality and integrity',
+              fr:'Questions sur l\'infrastructure, l\'hygiène, la qualité d\'enseignement et l\'intégrité'} },
+      { id:'infrastructure', icon:'🏗',
+        name:{en:'Infrastructure Monitoring',fr:'Surveillance de l\'Infrastructure'},
+        desc:{en:'Questions on construction quality, materials, labour and governance',
+              fr:'Questions sur la construction, les matériaux, la main-d\'œuvre et la gouvernance'} },
+      { id:'survey',         icon:'📊',
+        name:{en:'Student Survey',fr:'Enquête étudiants'},
+        desc:{en:'Questions capturing student satisfaction and school experience',
+              fr:'Questions sur la satisfaction des étudiants et l\'expérience scolaire'} },
+    ],
+
+    // ── Translations helper ──
+    t(k) { return (I18N[this.lang] || I18N.en)[k] || k; },
+    toggleLang() { this.lang = this.lang === 'en' ? 'fr' : 'en'; },
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  API LAYER
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Normalise an API submission into the internal shape the UI uses
+    _normalise(sub) {
+      // Build answers map { [questionId]: { label, isProblem, isPartial, isNeutral, isFreeText } }
+      const answers = {};
+      (sub.answers || []).forEach(a => {
+        answers[a.questionId] = {
+          label:     { en: a.labelEn || '', fr: a.labelFr || '' },
+          isProblem: a.isProblem  || false,
+          isPartial: a.isPartial  || false,
+          isNeutral: a.isNeutral  || false,
+          isFreeText:a.isFreeText || false,
+        };
+      });
+
+      // Derive problem question list for the report card preview
+      const qs = this.questionsCache[sub.form_type] || [];
+      const problemQuestions = Object.entries(answers)
+        .filter(([, a]) => a.isProblem)
+        .map(([qid]) => { const q = qs.find(x => x.id === qid); return q ? (q.q[this.lang] || q.q.en) : ''; })
+        .filter(Boolean).slice(0, 5);
+
+      return {
+        id:              sub.id,
+        date:            sub.submitted_at,
+        schoolId:        sub.school_id,
+        type:            sub.form_type,
+        monitorName:     sub.monitor_name || '',
+        problemCount:    sub.problem_count,
+        okCount:         sub.ok_count,
+        problemQuestions,
+        answers,
+      };
+    },
+
+    async fetchSchools() {
+      this.loadingSchools = true;
+      try {
+        const res = await fetch(`${API}/api/schools`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        // Map snake_case DB fields → camelCase used in templates
+        this.schools = data.map(s => ({
+          id:             s.id,
+          name:           s.name,
+          type:           s.type,
+          location:       s.location,
+          province:       s.province,
+          lat:            parseFloat(s.lat),
+          lng:            parseFloat(s.lng),
+          students:       s.students,
+          girls:          s.girls,
+          boys:           s.boys,
+          monitoredBy:    s.monitored_by,
+          lastMonitoring: s.last_monitoring || '',
+          budget:         s.budget,
+          description:    s.description,
+          photo:          s.photo_url,
+          monitorsList:   s.monitors_list || [],
+        }));
+      } catch (err) {
+        console.error('fetchSchools:', err);
+        this.apiError = this.t('error_loading');
+      } finally {
+        this.loadingSchools = false;
+      }
+    },
+
+    async fetchSubmissions() {
+      this.loadingSubmissions = true;
+      try {
+        const res = await fetch(`${API}/api/submissions`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        this.allSubmissions = data.map(s => this._normalise(s));
+      } catch (err) {
+        console.error('fetchSubmissions:', err);
+      } finally {
+        this.loadingSubmissions = false;
+      }
+    },
+
+    async fetchQuestions(formType) {
+      if (this.questionsCache[formType]) return; // already cached
+      this.loadingQuestions = true;
+      try {
+        const res = await fetch(`${API}/api/questions/${formType}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        this.questionsCache[formType] = data;
+      } catch (err) {
+        console.error('fetchQuestions:', err);
+        this.showToast('❌', this.t('error_loading'));
+      } finally {
+        this.loadingQuestions = false;
+      }
+    },
+
+    // Prefetch all 3 question sets in parallel (used on init for analytics)
+    async prefetchAllQuestions() {
+      await Promise.all(['service','infrastructure','survey'].map(t => this.fetchQuestions(t)));
+    },
+
+    // ── Submit a monitoring form ──────────────────────────────────────────────
+    async submitForm() {
+      if (this.submitting) return;
+      this.submitting = true;
+
+      // Build payload in the shape the API expects
+      const payload = {
+        schoolId:    this.monitorSchoolId,
+        formType:    this.monitorFormType,
+        monitorName: this.monitorName || null,
+        answers:     {},
+      };
+      for (const [qid, ans] of Object.entries(this.formAnswers)) {
+        payload.answers[qid] = {
+          label:     ans.label,
+          isProblem: ans.isProblem  || false,
+          isPartial: ans.isPartial  || false,
+          isNeutral: ans.isNeutral  || false,
+          isFreeText:ans.isFreeText || false,
+        };
+      }
+
+      try {
+        const res = await fetch(`${API}/api/submissions`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const saved = await res.json();
+
+        // Refresh the submissions list so totals update instantly
+        await this.fetchSubmissions();
+
+        this.showToast('✅', this.lang === 'en' ? 'Report submitted successfully!' : 'Rapport soumis avec succès !');
+        this.formAnswers = {};
+        this.currentQ = 0;
+
+        // Find the newly created submission to display
+        const fresh = this.allSubmissions.find(s => String(s.id) === String(saved.id));
+        this.viewedSub = fresh || null;
+        this.prevPage  = 'monitor';
+        this.page      = 'submission';
+      } catch (err) {
+        console.error('submitForm:', err);
+        this.showToast('❌', this.lang === 'en' ? 'Submission failed. Please try again.' : 'Échec de l\'envoi. Réessayez.');
+      } finally {
+        this.submitting = false;
+      }
+    },
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  COMPUTED / STATS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    get totalIssues() { return this.allSubmissions.reduce((a, s) => a + s.problemCount, 0); },
+    get totalFixed()  { return this.allSubmissions.reduce((a, s) => a + s.okCount, 0); },
+    get overallFixRate() {
+      const tot = this.totalIssues + this.totalFixed;
+      return tot ? Math.round(this.totalFixed / tot * 100) : 0;
+    },
+
+    get provinceStats() {
+      const pMap = {};
+      this.schools.forEach(s => {
+        if (!pMap[s.province]) pMap[s.province] = { name: s.province, schools: 0, reports: 0, issues: 0 };
+        pMap[s.province].schools++;
+        const subs = this.getSchoolSubmissions(s.id);
+        pMap[s.province].reports += subs.length;
+        pMap[s.province].issues  += subs.reduce((a, sub) => a + sub.problemCount, 0);
+      });
+      const staticData = {
+        'Nord-Kivu':{schools:38},'Sud-Kivu':{schools:29},'Haut-Katanga':{schools:31},
+        'Lualaba':{schools:22},'Kasaï':{schools:27},'Maniema':{schools:18},
+        'Équateur':{schools:20},'Kinshasa':{schools:62},
+      };
+      Object.keys(staticData).forEach(p => {
+        if (!pMap[p]) pMap[p] = { name:p, schools: staticData[p].schools, reports:0, issues:0 };
+      });
+      return Object.values(pMap).map(p => ({
+        ...p, rate: p.issues > 0 ? Math.round(p.reports / p.issues * 100) : (p.reports > 0 ? 100 : 0)
+      }));
+    },
+
+    get categoryStats() {
+      const cats = {};
+      this.allSubmissions.forEach(sub => {
+        if (!sub.answers) return;
+        const qs = this.questionsCache[sub.type] || [];
+        Object.entries(sub.answers).forEach(([qid, ans]) => {
+          const q = qs.find(x => x.id === qid);
+          if (q && ans.isProblem) {
+            const cat = CAT_LABELS[this.lang][q.cat] || q.cat;
+            cats[cat] = (cats[cat] || 0) + 1;
+          }
+        });
+      });
+      return Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([label,count])=>({label,count}));
+    },
+
+    get topIssues() {
+      const qCounts = {};
+      this.allSubmissions.forEach(sub => {
+        if (!sub.answers) return;
+        const qs = this.questionsCache[sub.type] || [];
+        Object.entries(sub.answers).forEach(([qid, ans]) => {
+          const q = qs.find(x => x.id === qid);
+          if (q && ans.isProblem) {
+            if (!qCounts[qid]) qCounts[qid] = { q: q.q[this.lang] || q.q.en, count: 0 };
+            qCounts[qid].count++;
+          }
+        });
+      });
+      const total = this.allSubmissions.length || 1;
+      return Object.values(qCounts).sort((a,b)=>b.count-a.count).slice(0,8)
+        .map(x => ({ ...x, pct: Math.round(x.count / total * 100) }));
+    },
+
+    // ── School helpers ────────────────────────────────────────────────────────
+    get provinces() { return [...new Set(this.schools.map(s=>s.province))].sort(); },
+
+    get filteredSchools() {
+      const q = this.searchQuery.toLowerCase();
+      return this.schools.filter(s => {
+        const mQ = !q || s.name.toLowerCase().includes(q) || s.province.toLowerCase().includes(q) || s.location.toLowerCase().includes(q);
+        const mP = !this.filterProvince || s.province === this.filterProvince;
+        return mQ && mP;
+      });
+    },
+
+    get monitorFilteredSchools() {
+      const q = this.monitorSearch.toLowerCase();
+      return this.schools.filter(s => !q || s.name.toLowerCase().includes(q) || s.location.toLowerCase().includes(q));
+    },
+
+    getSchool(id)            { return this.schools.find(s => s.id === id) || null; },
+    getSchoolSubmissions(id) { return this.allSubmissions.filter(s => s.schoolId === id); },
+    getSurveySubmissions(id) { return this.allSubmissions.filter(s => s.schoolId === id && s.type === 'survey'); },
+    getSubmissionCount(id)   { return this.getSchoolSubmissions(id).length; },
+    getTotalProblems(id)     { return this.getSchoolSubmissions(id).reduce((a,s) => a + s.problemCount, 0); },
+    getTotalOk(id)           { return this.getSchoolSubmissions(id).reduce((a,s) => a + s.okCount, 0); },
+
+    getFixRate(id) {
+      const t = this.getTotalProblems(id) + this.getTotalOk(id);
+      return t ? Math.round(this.getTotalOk(id) / t * 100) : 0;
+    },
+
+    getSchoolHealth(id) {
+      const subs = this.getSchoolSubmissions(id);
+      if (!subs.length) return { label:'New', color:'badge-neutral' };
+      const rate = this.getFixRate(id);
+      if (rate >= 70) return { label:'Good',     color:'badge-ok' };
+      if (rate >= 40) return { label:'Issues',   color:'badge-partial' };
+      return                 { label:'Critical', color:'badge-problem' };
+    },
+
+    getSurveyStats(id) {
+      const subs = this.getSurveySubmissions(id);
+      if (!subs.length) return [];
+      const qs = (this.questionsCache.survey || []).filter(q => q.type === 'choice').slice(4);
+      return qs.map(q => {
+        const counts = {};
+        subs.forEach(sub => {
+          const ans = sub.answers?.[q.id];
+          if (ans) { const k = ans.label?.en || '—'; counts[k] = (counts[k] || 0) + 1; }
+        });
+        const total = Object.values(counts).reduce((a,b) => a+b, 0) || 1;
+        const optMap = {};
+        (q.options||[]).forEach(o => optMap[o.label.en] = o.isProblem);
+        return {
+          question: q.q[this.lang] || q.q.en,
+          answers: Object.entries(counts).map(([k,c]) => ({
+            label: k, pct: Math.round(c/total*100), isProblem: optMap[k] || false
+          })).sort((a,b) => b.pct - a.pct),
+        };
+      }).filter(q => q.answers.length > 0);
+    },
+
+    // ── Form logic ────────────────────────────────────────────────────────────
+    get activeQuestions() {
+      const qs = this.questionsCache[this.monitorFormType] || [];
+      return qs.filter(q => {
+        if (!q.conditionalOn) return true;
+        const dep = this.formAnswers[q.conditionalOn.id];
+        return dep && dep.label?.en === q.conditionalOn.labelEn;
+      });
+    },
+
+    selectAnswer(qid, opt) {
+      this.formAnswers[qid] = {
+        label:     opt.label,
+        isProblem: opt.isProblem || false,
+        isPartial: opt.isPartial || false,
+        isNeutral: opt.isNeutral || false,
+      };
+    },
+
+    getAnswerClass(qid, opt) {
+      const a = this.formAnswers[qid];
+      if (!a || a.label?.en !== (opt.label?.en || opt.label)) return '';
+      if (a.isProblem && !a.isPartial) return 'selected-problem';
+      if (a.isPartial)  return 'selected-partial';
+      if (a.isNeutral)  return 'selected-neutral';
+      return 'selected-ok';
+    },
+
+    nextQ()    { if (this.currentQ < this.activeQuestions.length - 1) this.currentQ++; },
+    prevQ()    { if (this.currentQ > 0) this.currentQ--; },
+    jumpToQ(i) { this.currentQ = i; },
+
+    async startForm() {
+      if (!this.monitorSchoolId || !this.monitorFormType) return;
+      // Ensure questions are loaded before entering the form
+      await this.fetchQuestions(this.monitorFormType);
+      this.formAnswers = {};
+      this.currentQ = 0;
+      this.page = 'monitor-form';
+    },
+
+    startMonitor(school) {
+      if (!school) return;
+      this.monitorSchoolId  = school.id;
+      this.monitorFormType  = null;
+      this.monitorName      = '';
+      this.page             = 'monitor';
+    },
+
+    viewSubmission(sub) {
+      this.viewedSub  = sub;
+      this.prevPage   = this.page;
+      this.page       = 'submission';
+    },
+
+    getSubAnswers(sub) {
+      if (!sub?.answers) return [];
+      const qs = this.questionsCache[sub.type] || [];
+      return Object.entries(sub.answers).map(([qid, ans]) => {
+        const q = qs.find(x => x.id === qid);
+        return {
+          qid,
+          question: q ? (q.q[this.lang] || q.q.en) : qid,
+          answer:   ans.isFreeText
+            ? (ans.label?.en || '—')
+            : (ans.label?.[this.lang] || ans.label?.en || '—'),
+          isProblem: ans.isProblem || false,
+        };
+      });
+    },
+
+    formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleDateString(
+          this.lang === 'fr' ? 'fr-FR' : 'en-GB',
+          { day:'numeric', month:'short', year:'numeric' }
+        );
+      } catch { return iso; }
+    },
+
+    showToast(icon, msg) {
+      this.toast = { show:true, icon, msg };
+      setTimeout(() => { this.toast.show = false; }, 3500);
+    },
+
+    goPage(p) {
+      this.prevPage = this.page;
+      this.page     = p;
+      if (p === 'home')    this.$nextTick(() => this.initHomeMap());
+      if (p === 'schools') this.$nextTick(() => this.initSchoolsMap());
+    },
+
+    openSchool(school) {
+      this.selectedSchool = school;
+      this.detailTab      = 'overview';
+      this.prevPage       = this.page;
+      this.page           = 'detail';
+      this.$nextTick(() => this.initDetailMap());
+    },
+
+    // ── Maps ──────────────────────────────────────────────────────────────────
+    _orangeDotIcon(size) {
+      return L.divIcon({
+        className:'', iconSize:[size,size], iconAnchor:[size/2,size/2],
+        popupAnchor:[0,-(size/2+4)],
+        html:`<div style="background:#C87533;width:${size}px;height:${size}px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></div>`
+      });
+    },
+    _clusterIcon(count) {
+      const size = count >= 100 ? 52 : count >= 10 ? 46 : 38;
+      return L.divIcon({
+        className:'', iconSize:[size,size], iconAnchor:[size/2,size/2],
+        html:`<div style="width:${size}px;height:${size}px;background:#C87533;color:white;border-radius:50%;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${count}</div>`
+      });
+    },
+    _tile() {
+      return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution:'© OpenStreetMap', maxZoom:18 });
+    },
+
+    initHomeMap() {
+      if (this.homeMap) { this.homeMap.invalidateSize(); return; }
+      const el = document.getElementById('home-map'); if (!el) return;
+      this.homeMap = L.map('home-map',{ zoomControl:true, scrollWheelZoom:false }).setView([-4.0,23.5],5);
+      this._tile().addTo(this.homeMap);
+      [{lat:1.2,lng:24.5,count:67},{lat:-4.0,lng:15.3,count:94}]
+        .forEach(c => L.marker([c.lat,c.lng],{icon:this._clusterIcon(c.count)}).addTo(this.homeMap));
+      this.schools.forEach(s => {
+        const m = L.marker([s.lat,s.lng],{icon:this._orangeDotIcon(12)}).addTo(this.homeMap);
+        m.bindPopup(`<b>${s.name}</b><br><small>${s.location}</small>`);
+        m.on('click', () => this.openSchool(s));
+      });
+    },
+
+    initSchoolsMap() {
+      if (this.schoolsMap) { this.schoolsMap.invalidateSize(); return; }
+      const el = document.getElementById('schools-map'); if (!el) return;
+      this.schoolsMap = L.map('schools-map',{ zoomControl:true, scrollWheelZoom:false }).setView([-4.0,23.5],5);
+      this._tile().addTo(this.schoolsMap);
+      [{lat:1.2,lng:24.5,count:1},{lat:-1.2,lng:19.5,count:24},{lat:-3.5,lng:23.5,count:3},
+       {lat:-4.5,lng:15.3,count:12},{lat:-5.5,lng:22.5,count:36},{lat:-3.8,lng:28.8,count:54}]
+        .forEach(c => L.marker([c.lat,c.lng],{icon:this._clusterIcon(c.count)}).addTo(this.schoolsMap));
+      this.schools.forEach(s => {
+        const m = L.marker([s.lat,s.lng],{icon:this._orangeDotIcon(10)}).addTo(this.schoolsMap);
+        m.bindPopup(`<b>${s.name}</b><br><small>${s.location}</small>`);
+        m.on('click', () => this.openSchool(s));
+      });
+    },
+
+    initDetailMap() {
+      const s = this.selectedSchool; if (!s) return;
+      if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
+      const el = document.getElementById('detail-map'); if (!el) return;
+      this.detailMap = L.map('detail-map',{ zoomControl:false, dragging:false, scrollWheelZoom:false })
+        .setView([s.lat,s.lng],6);
+      this._tile().addTo(this.detailMap);
+      const icon = L.divIcon({
+        className:'', iconSize:[18,18], iconAnchor:[9,9],
+        html:`<div style="background:#C87533;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`
+      });
+      L.marker([s.lat,s.lng],{icon}).addTo(this.detailMap).bindPopup(s.name).openPopup();
+    },
+
+    // ── Bootstrap ─────────────────────────────────────────────────────────────
+    async init() {
+      // Load schools + submissions + all question sets in parallel
+      await Promise.all([
+        this.fetchSchools(),
+        this.fetchSubmissions(),
+        this.prefetchAllQuestions(),
+      ]);
+
+      this.$watch('page', val => {
+        if (val === 'home')    this.$nextTick(() => this.initHomeMap());
+        if (val === 'schools') this.$nextTick(() => this.initSchoolsMap());
+        if (val === 'detail' && this.selectedSchool) this.$nextTick(() => this.initDetailMap());
+      });
+
+      this.$nextTick(() => this.initHomeMap());
+    },
+  };
+}
+</script>
+</body>
+</html>
