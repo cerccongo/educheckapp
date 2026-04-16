@@ -125,14 +125,11 @@ Either way you should end up with:
 
 ```
 /opt/educheck/
-├── backend/
-│   ├── server.js
-│   ├── package.json
-│   ├── .env.example
-│   └── db/
-│       └── schema.sql
-└── frontend/
-    └── index.html
+├── server.js
+├── package.json
+├── .env.example
+├── schema.sql
+└── index.html
 ```
 
 ---
@@ -140,7 +137,7 @@ Either way you should end up with:
 ## STEP 5 — Install dependencies and configure environment
 
 ```bash
-cd /opt/educheck/backend
+cd /opt/educheck
 npm install --omit=dev
 ```
 
@@ -166,10 +163,10 @@ Save with `Ctrl+O`, exit with `Ctrl+X`.
 
 ## STEP 6 — Initialise the database
 
-Run the schema + seed data SQL file against your managed database:
+Run the schema SQL file against your managed database:
 
 ```bash
-psql "$DATABASE_URL" -f /opt/educheck/backend/db/schema.sql
+psql "$DATABASE_URL" -f /opt/educheck/schema.sql
 ```
 
 You should see output like:
@@ -209,8 +206,8 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/educheck/backend
-EnvironmentFile=/opt/educheck/backend/.env
+WorkingDirectory=/opt/educheck
+EnvironmentFile=/opt/educheck/.env
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=5
@@ -260,7 +257,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
 
     # ── Frontend (static files) ──────────────────────────
-    root /opt/educheck/frontend;
+    root /opt/educheck;
     index index.html;
 
     location / {
@@ -299,7 +296,7 @@ Edit `index.html` to point to the same origin (since Nginx proxies `/api/`):
 
 ```bash
 sed -i "s|window.EDUCHECK_API_URL || 'http://localhost:3000'|window.location.origin|g" \
-  /opt/educheck/frontend/index.html
+  /opt/educheck/index.html
 ```
 
 Now visit `http://YOUR_DROPLET_IP` in your browser — EduCheck should load with real data.
@@ -364,7 +361,7 @@ git pull
 systemctl restart educheck-api
 
 # Re-run schema migrations if the DB changed
-psql "$DATABASE_URL" -f backend/db/schema.sql
+psql "$DATABASE_URL" -f schema.sql
 ```
 
 ---
