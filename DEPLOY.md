@@ -109,8 +109,8 @@ Push your project to a GitHub/GitLab repo first, then:
 
 ```bash
 cd /opt
-git clone https://github.com/YOUR_USERNAME/educheck.git
-cd educheck
+git clone https://github.com/cerccongo/educheckapp.git
+cd educheckapp
 ```
 
 ### Option B — Via SCP from your local machine
@@ -118,13 +118,13 @@ cd educheck
 From your local terminal (not the server):
 
 ```bash
-scp -r ./educheck root@YOUR_DROPLET_IP:/opt/
+scp -r ./educheckapp root@YOUR_DROPLET_IP:/opt/
 ```
 
 Either way you should end up with:
 
 ```
-/opt/educheck/
+/opt/educheckapp/
 ├── server.js
 ├── package.json
 ├── .env.example
@@ -137,7 +137,7 @@ Either way you should end up with:
 ## STEP 5 — Install dependencies and configure environment
 
 ```bash
-cd /opt/educheck
+cd /opt/educheckapp
 npm install --omit=dev
 ```
 
@@ -166,7 +166,7 @@ Save with `Ctrl+O`, exit with `Ctrl+X`.
 Run the schema SQL file against your managed database:
 
 ```bash
-psql "$DATABASE_URL" -f /opt/educheck/schema.sql
+psql "$DATABASE_URL" -f /opt/educheckapp/schema.sql
 ```
 
 You should see output like:
@@ -206,8 +206,8 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/educheck
-EnvironmentFile=/opt/educheck/.env
+WorkingDirectory=/opt/educheckapp
+EnvironmentFile=/opt/educheckapp/.env
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=5
@@ -222,7 +222,7 @@ Enable and start the service:
 
 ```bash
 # Give www-data ownership of the project
-chown -R www-data:www-data /opt/educheck
+chown -R www-data:www-data /opt/educheckapp
 
 systemctl daemon-reload
 systemctl enable educheck-api
@@ -246,7 +246,7 @@ curl http://localhost:3000/api/schools | python3 -m json.tool | head -20
 Nginx will serve the static frontend and proxy `/api/` requests to Node.js.
 
 ```bash
-nano /etc/nginx/sites-available/educheck
+nano /etc/nginx/sites-available/educheckapp
 ```
 
 Paste (replace `yourdomain.com` with your actual domain, or use the IP if you have no domain yet):
@@ -257,7 +257,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
 
     # ── Frontend (static files) ──────────────────────────
-    root /opt/educheck;
+    root /opt/educheckapp;
     index index.html;
 
     location / {
@@ -285,7 +285,7 @@ server {
 Enable the site and reload Nginx:
 
 ```bash
-ln -s /etc/nginx/sites-available/educheck /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/educheckapp /etc/nginx/sites-enabled/
 nginx -t          # test configuration — must say "syntax is ok"
 systemctl reload nginx
 ```
@@ -296,7 +296,7 @@ Edit `index.html` to point to the same origin (since Nginx proxies `/api/`):
 
 ```bash
 sed -i "s|window.EDUCHECK_API_URL || 'http://localhost:3000'|window.location.origin|g" \
-  /opt/educheck/index.html
+  /opt/educheckapp/index.html
 ```
 
 Now visit `http://YOUR_DROPLET_IP` in your browser — EduCheck should load with real data.
@@ -354,7 +354,7 @@ will be saved to PostgreSQL.
 
 ```bash
 # Pull new code
-cd /opt/educheck
+cd /opt/educheckapp
 git pull
 
 # Restart the API
