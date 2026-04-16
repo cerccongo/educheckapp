@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EduCheck | School Monitoring — DRC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mada:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -24,8 +24,8 @@
     --border: #e5e1d8;
   }
   * { box-sizing: border-box; }
-  body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
-  h1, h2, .font-display { font-family: 'Syne', sans-serif; }
+  body { font-family: 'Mada', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+  h1, h2, .font-display { font-family: 'Mada', sans-serif; }
   [x-cloak] { display: none !important; }
 
   /* Nav */
@@ -84,7 +84,7 @@
   .chart-bar { border-radius: 4px 4px 0 0; transition: height .5s ease; }
 
   /* Input */
-  .form-input { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; width: 100%; outline: none; transition: border-color .15s; background: #fff; }
+  .form-input { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'Mada', sans-serif; font-size: 13px; width: 100%; outline: none; transition: border-color .15s; background: #fff; }
   .form-input:focus { border-color: var(--orange); }
 
   /* School card */
@@ -105,7 +105,7 @@
   @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
   /* Section header */
-  .section-header { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--orange); letter-spacing: -.02em; }
+  .section-header { font-family: 'Mada', sans-serif; font-size: 22px; font-weight: 800; color: var(--orange); letter-spacing: -.02em; }
 
   /* Animate fade in */
   .fade-in { animation: fadeIn .3s ease; }
@@ -128,29 +128,136 @@
   <span x-text="toast.msg"></span>
 </div>
 
+<!-- ═══════════════════════ AUTH OVERLAY ═══════════════════════ -->
+<div x-show="!currentUser" x-cloak class="min-h-screen flex items-center justify-center px-4" style="background:var(--bg)">
+  <div class="w-full max-w-md">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <h1 class="text-5xl font-black" style="font-family:Mada,sans-serif;letter-spacing:-.03em">
+        <span class="text-gray-900">EDU</span><span style="color:var(--orange)">CHECK</span>
+      </h1>
+      <p class="text-sm text-gray-500 mt-2">School Monitoring Platform — DRC</p>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="flex border-b mb-6" style="border-color:var(--border)">
+      <button @click="authView='login'"   class="tab-btn" :class="authView==='login'   ?'active':''" x-text="lang==='fr'?'Connexion':'Login'"></button>
+      <button @click="authView='register'" class="tab-btn" :class="authView==='register'?'active':''" x-text="lang==='fr'?'Créer un compte':'Create Account'"></button>
+      <div class="ml-auto flex items-center pr-2">
+        <button @click="toggleLang()" class="btn-ghost px-3 py-1.5 text-xs rounded-lg">🌐 <span x-text="lang==='en'?'FR':'EN'"></span></button>
+      </div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div x-show="authView==='login'" class="card p-6 space-y-4 fade-in">
+      <div x-show="loginError" class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3" x-text="loginError"></div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Adresse e-mail':'Email Address'"></label>
+        <input type="email" x-model="loginEmail" class="form-input" placeholder="you@example.com" @keydown.enter="doLogin()">
+      </div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Mot de passe':'Password'"></label>
+        <input type="password" x-model="loginPassword" class="form-input" placeholder="••••••••" @keydown.enter="doLogin()">
+      </div>
+      <button @click="doLogin()" :disabled="authLoading" class="btn-primary w-full py-3 text-sm" x-text="authLoading?(lang==='fr'?'Connexion…':'Signing in…'):(lang==='fr'?'Se connecter':'Sign In')"></button>
+      <div class="text-center pt-2">
+        <p class="text-xs text-gray-400" x-text="lang==='fr'?'Pas encore de compte ?':'No account yet?'"> </p>
+        <button @click="authView='register'" class="text-xs font-bold mt-1" style="color:var(--orange)" x-text="lang==='fr'?'Créer un compte →':'Create an account →'"></button>
+      </div>
+      <!-- Public viewer access -->
+      <div class="border-t pt-4 text-center" style="border-color:var(--border)">
+        <p class="text-xs text-gray-400 mb-2" x-text="lang==='fr'?'Accès public (données anonymisées)':'Public access (anonymised data only)'"></p>
+        <button @click="viewAsPublic()" class="btn-ghost w-full py-2 text-xs" x-text="lang==='fr'?'Continuer sans compte →':'Continue without account →'"></button>
+      </div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div x-show="authView==='register'" class="card p-6 space-y-4 fade-in">
+      <div x-show="registerError" class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3" x-text="registerError"></div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Nom complet':'Full Name'"></label>
+        <input type="text" x-model="registerName" class="form-input" :placeholder="lang==='fr'?'Votre nom':'Your full name'">
+      </div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Adresse e-mail':'Email Address'"></label>
+        <input type="email" x-model="registerEmail" class="form-input" placeholder="you@example.com">
+      </div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Mot de passe (8 caractères min.)':'Password (min. 8 characters)'"></label>
+        <input type="password" x-model="registerPassword" class="form-input" placeholder="••••••••">
+      </div>
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'Mon rôle':'My Role'"></label>
+        <select x-model="registerRole" class="form-input">
+          <option value="monitor" x-text="lang==='fr'?'Moniteur (élève/parent)':'Monitor (student/parent)'"></option>
+          <option value="public"  x-text="lang==='fr'?'Visiteur public (données agrégées)':'Public Viewer (aggregate data)'"></option>
+        </select>
+        <p class="text-[11px] text-gray-400 mt-1" x-text="lang==='fr'?'Les rôles Administrateur et Analyste sont attribués par le CERC.':'School Admin and Analyst roles are assigned by CERC.'"></p>
+      </div>
+      <div x-show="registerRole==='monitor'">
+        <label class="text-xs font-black uppercase tracking-widest text-gray-400 block mb-1.5" x-text="lang==='fr'?'École (optionnel)':'School (optional)'"></label>
+        <select x-model="registerSchoolId" class="form-input">
+          <option value="" x-text="lang==='fr'?'— Sélectionner une école —':'— Select a school —'"></option>
+          <template x-for="s in schools" :key="s.id">
+            <option :value="s.id" x-text="s.name + ' · ' + s.location"></option>
+          </template>
+        </select>
+      </div>
+      <button @click="doRegister()" :disabled="authLoading" class="btn-primary w-full py-3 text-sm" x-text="authLoading?(lang==='fr'?'Création…':'Creating account…'):(lang==='fr'?'Créer mon compte':'Create My Account')"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MAIN APP (authenticated) ═══════════════════════ -->
+<div x-show="currentUser" x-cloak>
 <!-- ═══════════════════════ NAV ═══════════════════════ -->
 <nav class="bg-white sticky top-0 z-50 shadow-sm">
   <div class="max-w-screen-xl mx-auto px-6 flex items-center justify-between h-16">
-    <button @click="goPage('home')" class="text-3xl leading-none" style="font-family:Syne,sans-serif; font-weight:800;">
+    <button @click="goPage('home')" class="text-3xl leading-none" style="font-family:'Mada',sans-serif; font-weight:800;">
       <span class="text-gray-900">EDU</span><span style="color:var(--orange)">CHECK</span>
     </button>
-    <div class="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-700">
-      <button @click="goPage('home')" :class="page==='home'?'nav-active':''">
+    <div class="hidden md:flex items-center gap-5 text-sm font-semibold text-gray-700">
+      <button @click="goPage(currentUser?.role==='public'?'public-dashboard':'home')" :class="page==='home'||page==='public-dashboard'?'nav-active':''">
         <span x-text="t('nav_home')"></span>
       </button>
-      <button @click="goPage('schools')" :class="page==='schools'||page==='detail'?'nav-active':''">
+      <button x-show="currentUser && currentUser.role!=='public'" @click="goPage('schools')" :class="page==='schools'||page==='detail'?'nav-active':''">
         <span x-text="t('nav_schools')"></span>
       </button>
-      <button @click="goPage('analytics')" :class="page==='analytics'?'nav-active':''">
+      <button x-show="currentUser && ['monitor','cerc_analyst','school_admin'].includes(currentUser.role)" @click="goPage('analytics')" :class="page==='analytics'?'nav-active':''">
         <span x-text="t('nav_analytics')"></span>
       </button>
-      <button @click="goPage('monitor')" :class="page==='monitor'||page==='monitor-form'?'nav-active':''"
+      <button x-show="currentUser?.role==='monitor'" @click="goPage('monitor')"
+              :class="page==='monitor'||page==='monitor-form'?'nav-active':''"
               class="btn-primary px-4 py-2 rounded-lg text-xs" style="background:var(--orange);color:#fff;">
         <span x-text="t('nav_monitor')"></span>
+      </button>
+      <button x-show="currentUser?.role==='school_admin'" @click="goPage('admin')"
+              :class="page==='admin'?'nav-active':''"
+              class="btn-primary px-4 py-2 rounded-lg text-xs" style="background:var(--orange);color:#fff;">
+        <span x-text="lang==='fr'?'Mon Ecole':'My School'"></span>
+      </button>
+      <button x-show="currentUser?.role==='cerc_analyst'" @click="goPage('analyst')"
+              :class="page==='analyst'?'nav-active':''"
+              class="btn-primary px-4 py-2 rounded-lg text-xs" style="background:var(--orange);color:#fff;">
+        <span x-text="lang==='fr'?'Analyste':'Analyst'"></span>
       </button>
       <button @click="toggleLang()" class="btn-ghost px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
         🌐 <span x-text="lang==='en'?'FR':'EN'"></span>
       </button>
+      <div class="relative" x-data="{open:false}">
+        <button @click="open=!open" class="flex items-center gap-2 btn-ghost px-3 py-1.5 text-xs rounded-lg">
+          <div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black" style="background:var(--orange)" x-text="currentUser?.name?.charAt(0)||'?'"></div>
+          <span x-text="currentUser?.name?.split(' ')[0]||'Me'"></span>
+          <span class="text-[10px] opacity-60">v</span>
+        </button>
+        <div x-show="open" @click.away="open=false" class="absolute right-0 top-10 bg-white border rounded-xl shadow-lg z-50 py-1 min-w-[160px]" style="border-color:var(--border)">
+          <div class="px-3 py-2 border-b" style="border-color:var(--border)">
+            <p class="text-xs font-black text-gray-700" x-text="currentUser?.name"></p>
+            <p class="text-[11px] text-gray-400 capitalize" x-text="currentUser?.role?.replace('_',' ')"></p>
+          </div>
+          <button @click="doLogout(); open=false" class="w-full text-left px-3 py-2 text-xs text-red-500 font-bold hover:bg-red-50 transition" x-text="lang==='fr'?'Deconnexion':'Sign Out'"></button>
+        </div>
+      </div>
     </div>
     <button @click="mobileMenu=!mobileMenu" class="md:hidden p-2 text-gray-700">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +278,7 @@
 <!-- ═══════════════════════ HOME ═══════════════════════ -->
 <div x-show="page==='home'" x-cloak class="fade-in">
   <div class="max-w-screen-xl mx-auto px-6 pt-10 pb-6">
-    <p class="text-xl sm:text-2xl font-black text-gray-900 leading-snug max-w-3xl" style="font-family:Syne,sans-serif;">
+    <p class="text-xl sm:text-2xl font-black text-gray-900 leading-snug max-w-3xl" style="font-family:'Mada',sans-serif;">
       <span x-text="t('home_mission')"></span>
     </p>
   </div>
@@ -180,19 +287,19 @@
       <div class="flex-1"><div id="home-map" style="height:480px;width:100%;"></div></div>
       <div class="stats-panel text-white flex flex-col items-center justify-evenly py-10 px-8 gap-8" style="min-width:220px">
         <div class="text-center">
-          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="schools.length"></p>
+          <p class="text-6xl font-black leading-none" style="font-family:'Mada',sans-serif;" x-text="schools.length"></p>
           <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_schools')"></p>
         </div>
         <div class="text-center">
-          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="totalIssues"></p>
+          <p class="text-6xl font-black leading-none" style="font-family:'Mada',sans-serif;" x-text="totalIssues"></p>
           <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_problems')"></p>
         </div>
         <div class="text-center">
-          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="totalFixed"></p>
+          <p class="text-6xl font-black leading-none" style="font-family:'Mada',sans-serif;" x-text="totalFixed"></p>
           <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_fixed')"></p>
         </div>
         <div class="text-center">
-          <p class="text-6xl font-black leading-none" style="font-family:Syne,sans-serif;" x-text="Math.round(totalFixed/Math.max(totalIssues,1)*100)+'%'"></p>
+          <p class="text-6xl font-black leading-none" style="font-family:'Mada',sans-serif;" x-text="Math.round(totalFixed/Math.max(totalIssues,1)*100)+'%'"></p>
           <p class="text-xs font-bold uppercase tracking-widest mt-2" x-text="t('stat_resolved')"></p>
         </div>
       </div>
@@ -317,7 +424,7 @@
         <div class="flex flex-col border-t lg:border-t-0 lg:border-l-2 overflow-y-auto" style="flex:1 1 45%;border-color:var(--orange);max-height:600px;">
           <div class="p-4 border-b" style="border-color:var(--orange)">
             <div class="flex items-start justify-between gap-2">
-              <h2 class="text-xl font-black" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="selectedSchool.name"></h2>
+              <h2 class="text-xl font-black" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="selectedSchool.name"></h2>
               <span class="badge shrink-0" :class="getSchoolHealth(selectedSchool.id).color" x-text="getSchoolHealth(selectedSchool.id).label"></span>
             </div>
             <p class="text-xs text-gray-500 mt-1" x-text="selectedSchool.location"></p>
@@ -448,26 +555,26 @@
     <!-- KPIs -->
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="card p-5 text-center" style="background:var(--orange)">
-        <p class="text-5xl font-black text-white leading-none" style="font-family:Syne,sans-serif;" x-text="schools.length"></p>
+        <p class="text-5xl font-black text-white leading-none" style="font-family:'Mada',sans-serif;" x-text="schools.length"></p>
         <p class="text-xs font-bold uppercase tracking-widest mt-2 text-white opacity-80" x-text="t('stat_schools')"></p>
       </div>
       <div class="card p-5 text-center">
-        <p class="text-5xl font-black leading-none" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="totalIssues"></p>
+        <p class="text-5xl font-black leading-none" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="totalIssues"></p>
         <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('stat_problems')"></p>
       </div>
       <div class="card p-5 text-center">
-        <p class="text-5xl font-black leading-none text-green-600" style="font-family:Syne,sans-serif;" x-text="allSubmissions.length"></p>
+        <p class="text-5xl font-black leading-none text-green-600" style="font-family:'Mada',sans-serif;" x-text="allSubmissions.length"></p>
         <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('total_reports')"></p>
       </div>
       <div class="card p-5 text-center">
-        <p class="text-5xl font-black leading-none" style="font-family:Syne,sans-serif;" :class="overallFixRate>=50?'text-green-600':'text-red-600'" x-text="overallFixRate+'%'"></p>
+        <p class="text-5xl font-black leading-none" style="font-family:'Mada',sans-serif;" :class="overallFixRate>=50?'text-green-600':'text-red-600'" x-text="overallFixRate+'%'"></p>
         <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('stat_resolved')"></p>
       </div>
     </div>
 
     <!-- Province table -->
     <div class="card p-5">
-      <h2 class="font-black text-base mb-4" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="t('by_province')"></h2>
+      <h2 class="font-black text-base mb-4" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="t('by_province')"></h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -503,7 +610,7 @@
 
     <!-- Top issues -->
     <div class="card p-5">
-      <h2 class="font-black text-base mb-4" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="t('top_issues')"></h2>
+      <h2 class="font-black text-base mb-4" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="t('top_issues')"></h2>
       <div x-show="allSubmissions.length===0" class="text-center py-6 text-gray-400 text-sm" x-text="t('no_data_yet')"></div>
       <div x-show="allSubmissions.length>0" class="space-y-2">
         <template x-for="issue in topIssues" :key="issue.q">
@@ -596,7 +703,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div>
-        <h1 class="font-black text-lg leading-tight" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="getSchool(monitorSchoolId)?.name"></h1>
+        <h1 class="font-black text-lg leading-tight" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="getSchool(monitorSchoolId)?.name"></h1>
         <p class="text-xs text-gray-400" x-text="formTypes.find(f=>f.id===monitorFormType)?.name[lang]"></p>
       </div>
     </div>
@@ -685,7 +792,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           </button>
           <div>
-            <h1 class="font-black text-lg" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="getSchool(viewedSub.schoolId)?.name"></h1>
+            <h1 class="font-black text-lg" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="getSchool(viewedSub.schoolId)?.name"></h1>
             <div class="flex items-center gap-2 mt-0.5">
               <span class="badge" :class="viewedSub.type==='service'?'badge-neutral':viewedSub.type==='infrastructure'?'badge-partial':'badge-ok'"
                     x-text="viewedSub.type==='service'?t('form_service'):viewedSub.type==='infrastructure'?t('form_infra'):t('form_survey')"></span>
@@ -697,15 +804,15 @@
         <!-- Summary -->
         <div class="grid grid-cols-3 gap-3 mb-6">
           <div class="card p-3 text-center">
-            <p class="text-2xl font-black text-red-500" style="font-family:Syne,sans-serif;" x-text="viewedSub.problemCount"></p>
+            <p class="text-2xl font-black text-red-500" style="font-family:'Mada',sans-serif;" x-text="viewedSub.problemCount"></p>
             <p class="text-xs text-gray-400 mt-1" x-text="t('problems')"></p>
           </div>
           <div class="card p-3 text-center">
-            <p class="text-2xl font-black text-green-600" style="font-family:Syne,sans-serif;" x-text="viewedSub.okCount"></p>
+            <p class="text-2xl font-black text-green-600" style="font-family:'Mada',sans-serif;" x-text="viewedSub.okCount"></p>
             <p class="text-xs text-gray-400 mt-1" x-text="t('ok')"></p>
           </div>
           <div class="card p-3 text-center">
-            <p class="text-2xl font-black" style="font-family:Syne,sans-serif;color:var(--orange)" x-text="viewedSub.answers ? Object.keys(viewedSub.answers).length : 0"></p>
+            <p class="text-2xl font-black" style="font-family:'Mada',sans-serif;color:var(--orange)" x-text="viewedSub.answers ? Object.keys(viewedSub.answers).length : 0"></p>
             <p class="text-xs text-gray-400 mt-1" x-text="t('answered')"></p>
           </div>
         </div>
@@ -835,6 +942,21 @@ const CAT_LABELS = {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 function educheck() {
   return {
+    // ── Auth ──
+    currentUser:      null,   // { id, name, email, role, schoolId }
+    authToken:        null,
+    authView:        'login',
+    authLoading:      false,
+    loginEmail:      '',
+    loginPassword:   '',
+    loginError:      '',
+    registerName:    '',
+    registerEmail:   '',
+    registerPassword:'',
+    registerRole:    'monitor',
+    registerSchoolId: null,
+    registerError:   '',
+
     // ── Navigation ──
     page: 'home',
     prevPage: 'home',
@@ -844,7 +966,8 @@ function educheck() {
     // ── Data (populated from API) ──
     schools: [],
     allSubmissions: [],
-    questionsCache: {},   // { service: [...], infrastructure: [...], survey: [...] }
+    questionsCache: {},
+    publicStats: {},
 
     // ── Loading / error states ──
     loadingSchools: true,
@@ -868,6 +991,15 @@ function educheck() {
     toast: { show: false, msg: '', icon: '' },
     homeMap: null, schoolsMap: null, detailMap: null,
 
+    // ── Admin panel state ──
+    adminSubmissions: [],
+    updateModal: { open: false, subId: null, status: '', note: '' },
+
+    // ── Analyst panel state ──
+    userList: [],
+    showCreateUser: false,
+    newUser: { name:'', email:'', password:'', role:'monitor', schoolId:'' },
+
     formTypes: [
       { id:'service',        icon:'📋',
         name:{en:'Service & Teaching Monitoring',fr:'Surveillance des Services & Enseignement'},
@@ -886,6 +1018,232 @@ function educheck() {
     // ── Translations helper ──
     t(k) { return (I18N[this.lang] || I18N.en)[k] || k; },
     toggleLang() { this.lang = this.lang === 'en' ? 'fr' : 'en'; },
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  AUTH HELPERS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    _authHeaders() {
+      return this.authToken
+        ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` }
+        : { 'Content-Type': 'application/json' };
+    },
+
+    async doLogin() {
+      this.loginError  = '';
+      this.authLoading = true;
+      try {
+        const res  = await fetch(`${API}/api/auth/login`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email: this.loginEmail, password: this.loginPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) { this.loginError = data.error || 'Login failed'; return; }
+        this._storeSession(data.token, data.user);
+        await this._afterLogin();
+      } catch { this.loginError = 'Connection error. Please try again.'; }
+      finally   { this.authLoading = false; }
+    },
+
+    async doRegister() {
+      this.registerError = '';
+      if (!this.registerName || !this.registerEmail || !this.registerPassword) {
+        this.registerError = 'All fields are required.'; return;
+      }
+      this.authLoading = true;
+      try {
+        const res  = await fetch(`${API}/api/auth/register`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            name:     this.registerName,
+            email:    this.registerEmail,
+            password: this.registerPassword,
+            role:     this.registerRole,
+            schoolId: this.registerSchoolId || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) { this.registerError = data.error || 'Registration failed'; return; }
+        this._storeSession(data.token, data.user);
+        await this._afterLogin();
+      } catch { this.registerError = 'Connection error. Please try again.'; }
+      finally   { this.authLoading = false; }
+    },
+
+    async viewAsPublic() {
+      // Set a pseudo-user so the main app shows with public role
+      this.currentUser = { id: 0, name: 'Public Viewer', email: '', role: 'public', schoolId: null };
+      this.authToken   = null;
+      await this.fetchPublicStats();
+      this.page = 'public-dashboard';
+    },
+
+    doLogout() {
+      localStorage.removeItem('educheck_token');
+      localStorage.removeItem('educheck_user');
+      this.authToken   = null;
+      this.currentUser = null;
+      this.loginEmail  = '';
+      this.loginPassword = '';
+      this.loginError  = '';
+      this.schools     = [];
+      this.allSubmissions = [];
+      // Re-fetch schools list for the register form (public names needed)
+      this._loadSchoolsForRegister();
+    },
+
+    _storeSession(token, user) {
+      this.authToken   = token;
+      this.currentUser = user;
+      localStorage.setItem('educheck_token', token);
+      localStorage.setItem('educheck_user',  JSON.stringify(user));
+    },
+
+    async _afterLogin() {
+      const role = this.currentUser.role;
+      await Promise.all([
+        this.fetchSchools(),
+        this.fetchSubmissions(),
+        this.prefetchAllQuestions(),
+      ]);
+      if (role === 'public')        { await this.fetchPublicStats(); this.page = 'public-dashboard'; }
+      else if (role === 'school_admin') { await this.loadAdminData(); this.page = 'admin'; }
+      else if (role === 'cerc_analyst') { await this.fetchUserList(); this.page = 'analyst'; }
+      else { this.page = 'home'; this.$nextTick(() => this.initHomeMap()); }
+    },
+
+    // ── Admin helpers ─────────────────────────────────────────────────────────
+    get adminSchool() {
+      return this.schools.find(s => s.id === this.currentUser?.schoolId) || null;
+    },
+
+    async loadAdminData() {
+      if (!this.currentUser?.schoolId) return;
+      // adminSubmissions = submissions for this school with issue status
+      this.adminSubmissions = this.allSubmissions
+        .filter(s => s.schoolId === this.currentUser.schoolId)
+        .map(s => ({ ...s, issueStatus: s.issueStatus || 'pending' }));
+      // Fetch latest statuses from API
+      try {
+        const res = await fetch(`${API}/api/issues/school/${this.currentUser.schoolId}`, {
+          headers: this._authHeaders(),
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          const statusMap = {};
+          rows.forEach(r => statusMap[r.submission_id] = r.latest_status);
+          this.adminSubmissions = this.adminSubmissions.map(s => ({
+            ...s, issueStatus: statusMap[s.id] || 'pending'
+          }));
+        }
+      } catch (e) { console.error('loadAdminData:', e); }
+    },
+
+    openUpdateModal(sub, status) {
+      this.updateModal = { open: true, subId: sub.id, status, note: '' };
+    },
+
+    async submitUpdateModal() {
+      await this.postIssueUpdate(
+        this.updateModal.subId,
+        this.updateModal.status,
+        this.updateModal.note
+      );
+      this.updateModal.open = false;
+    },
+
+    async postIssueUpdate(submissionId, status, note) {
+      try {
+        const res = await fetch(`${API}/api/issues/${submissionId}`, {
+          method:  'POST',
+          headers: this._authHeaders(),
+          body:    JSON.stringify({ status, note }),
+        });
+        if (!res.ok) throw new Error('Failed');
+        // Update local state immediately
+        this.adminSubmissions = this.adminSubmissions.map(s =>
+          s.id === submissionId ? { ...s, issueStatus: status } : s
+        );
+        this.showToast('✅', status === 'resolved' ? 'Marked as resolved!' : 'Status updated');
+      } catch (e) {
+        this.showToast('❌', 'Failed to update issue status');
+      }
+    },
+
+    // ── Analyst helpers ───────────────────────────────────────────────────────
+    async fetchUserList() {
+      try {
+        const res = await fetch(`${API}/api/auth/users`, { headers: this._authHeaders() });
+        if (res.ok) this.userList = await res.json();
+      } catch (e) { console.error('fetchUserList:', e); }
+    },
+
+    async createUser() {
+      try {
+        const res = await fetch(`${API}/api/auth/create-user`, {
+          method:  'POST',
+          headers: this._authHeaders(),
+          body:    JSON.stringify(this.newUser),
+        });
+        const data = await res.json();
+        if (!res.ok) { this.showToast('❌', data.error || 'Failed to create user'); return; }
+        this.userList.unshift(data);
+        this.newUser = { name:'', email:'', password:'', role:'monitor', schoolId:'' };
+        this.showCreateUser = false;
+        this.showToast('✅', 'User created successfully');
+      } catch { this.showToast('❌', 'Failed to create user'); }
+    },
+
+    async toggleUserActive(u) {
+      try {
+        const res = await fetch(`${API}/api/auth/users/${u.id}`, {
+          method:  'PATCH',
+          headers: this._authHeaders(),
+          body:    JSON.stringify({ is_active: !u.is_active }),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          this.userList = this.userList.map(x => x.id === u.id ? { ...x, ...updated } : x);
+        }
+      } catch { this.showToast('❌', 'Failed to update user'); }
+    },
+
+    async deleteSubmission(id) {
+      if (!confirm('Delete this submission permanently?')) return;
+      try {
+        const res = await fetch(`${API}/api/submissions/${id}`, {
+          method: 'DELETE', headers: this._authHeaders(),
+        });
+        if (res.ok) {
+          this.allSubmissions = this.allSubmissions.filter(s => s.id !== id);
+          this.showToast('✅', 'Submission deleted');
+        }
+      } catch { this.showToast('❌', 'Failed to delete'); }
+    },
+
+    // ── Public stats ──────────────────────────────────────────────────────────
+    async fetchPublicStats() {
+      try {
+        const res = await fetch(`${API}/api/stats/public`);
+        if (res.ok) this.publicStats = await res.json();
+      } catch (e) { console.error('fetchPublicStats:', e); }
+    },
+
+    // Load school list for register dropdown (no auth needed for names)
+    async _loadSchoolsForRegister() {
+      try {
+        const res = await fetch(`${API}/api/schools`, { headers: this._authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          // May return anonymized object if no token; if array, use it
+          if (Array.isArray(data)) this.schools = data.map(s => ({
+            id: s.id, name: s.name, location: s.location,
+          }));
+        }
+      } catch { /* silent */ }
+    },
 
     // ══════════════════════════════════════════════════════════════════════════
     //  API LAYER
@@ -928,9 +1286,11 @@ function educheck() {
     async fetchSchools() {
       this.loadingSchools = true;
       try {
-        const res = await fetch(`${API}/api/schools`);
+        const res = await fetch(`${API}/api/schools`, { headers: this._authHeaders() });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        // If public/unauthenticated, API returns { anonymized: true } — skip mapping
+        if (data.anonymized) return;
         // Map snake_case DB fields → camelCase used in templates
         this.schools = data.map(s => ({
           id:             s.id,
@@ -961,7 +1321,7 @@ function educheck() {
     async fetchSubmissions() {
       this.loadingSubmissions = true;
       try {
-        const res = await fetch(`${API}/api/submissions`);
+        const res = await fetch(`${API}/api/submissions`, { headers: this._authHeaders() });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         this.allSubmissions = data.map(s => this._normalise(s));
@@ -976,7 +1336,7 @@ function educheck() {
       if (this.questionsCache[formType]) return; // already cached
       this.loadingQuestions = true;
       try {
-        const res = await fetch(`${API}/api/questions/${formType}`);
+        const res = await fetch(`${API}/api/questions/${formType}`, { headers: this._authHeaders() });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         this.questionsCache[formType] = data;
@@ -1018,7 +1378,7 @@ function educheck() {
       try {
         const res = await fetch(`${API}/api/submissions`, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this._authHeaders(),
           body:    JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1336,23 +1696,356 @@ function educheck() {
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     async init() {
-      // Load schools + submissions + all question sets in parallel
-      await Promise.all([
-        this.fetchSchools(),
-        this.fetchSubmissions(),
-        this.prefetchAllQuestions(),
-      ]);
+      // ── Restore session from localStorage ──────────────────────────────────
+      const savedToken = localStorage.getItem('educheck_token');
+      const savedUser  = localStorage.getItem('educheck_user');
+      if (savedToken && savedUser) {
+        try {
+          this.authToken   = savedToken;
+          this.currentUser = JSON.parse(savedUser);
+          // Verify token is still valid with the server
+          const verify = await fetch(`${API}/api/auth/me`, {
+            headers: this._authHeaders()
+          });
+          if (verify.ok) {
+            this.currentUser = await verify.json();
+            localStorage.setItem('educheck_user', JSON.stringify(this.currentUser));
+          } else {
+            // Token expired or invalid — force re-login
+            this.doLogout();
+          }
+        } catch {
+          this.doLogout();
+        }
+      }
+
+      // ── Load school list for register dropdown (always needed) ──────────────
+      await this._loadSchoolsForRegister();
+
+      // ── If authenticated, load full data ────────────────────────────────────
+      if (this.currentUser && this.currentUser.role !== 'public') {
+        await Promise.all([
+          this.fetchSchools(),
+          this.fetchSubmissions(),
+          this.prefetchAllQuestions(),
+        ]);
+        const role = this.currentUser.role;
+        if (role === 'school_admin') {
+          await this.loadAdminData();
+          this.page = 'admin';
+        } else if (role === 'cerc_analyst') {
+          await this.fetchUserList();
+          this.page = 'analyst';
+        } else {
+          this.page = 'home';
+          this.$nextTick(() => this.initHomeMap());
+        }
+      } else if (this.currentUser?.role === 'public') {
+        await this.fetchPublicStats();
+        this.page = 'public-dashboard';
+      }
+      // If no currentUser → auth overlay is shown automatically by x-show="!currentUser"
 
       this.$watch('page', val => {
         if (val === 'home')    this.$nextTick(() => this.initHomeMap());
         if (val === 'schools') this.$nextTick(() => this.initSchoolsMap());
         if (val === 'detail' && this.selectedSchool) this.$nextTick(() => this.initDetailMap());
       });
-
-      this.$nextTick(() => this.initHomeMap());
     },
   };
 }
 </script>
+
+<!-- ═══════════════════════ SCHOOL ADMIN DASHBOARD ═══════════════════════ -->
+<div x-show="page==='admin'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="section-header" x-text="lang==='fr'?'Tableau de bord administrateur':'School Admin Dashboard'"></h1>
+        <p class="text-sm text-gray-500 mt-1" x-text="currentUser?.name"></p>
+      </div>
+      <span class="badge badge-partial" x-text="lang==='fr'?'Administrateur':'School Admin'"></span>
+    </div>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10 space-y-6">
+    <!-- School info -->
+    <template x-if="adminSchool">
+      <div class="card p-5">
+        <div class="flex items-start gap-4">
+          <div class="flex-1">
+            <h2 class="font-black text-lg" style="color:var(--orange)" x-text="adminSchool.name"></h2>
+            <p class="text-sm text-gray-500" x-text="adminSchool.location"></p>
+            <div class="flex gap-4 mt-2 text-xs font-semibold text-gray-600">
+              <span>👨‍🎓 <span x-text="adminSchool.students"></span> students</span>
+              <span>👧 <span x-text="adminSchool.girls"></span> girls</span>
+              <span>👦 <span x-text="adminSchool.boys"></span> boys</span>
+            </div>
+          </div>
+          <div class="text-right text-xs text-gray-400">
+            <p x-text="getSubmissionCount(adminSchool.id) + ' reports'"></p>
+            <p x-text="getTotalProblems(adminSchool.id) + ' issues'"></p>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Issue tracker -->
+    <div class="card p-5">
+      <h2 class="font-black text-base mb-4" style="color:var(--orange)" x-text="lang==='fr'?'Rapports & Résolution des problèmes':'Reports & Issue Resolution'"></h2>
+      <div x-show="adminSubmissions.length===0" class="text-center py-8 text-gray-400">
+        <p class="text-3xl mb-2">📋</p>
+        <p class="text-sm" x-text="lang==='fr'?'Aucun rapport pour votre école.':'No reports yet for your school.'"></p>
+      </div>
+      <div class="space-y-3">
+        <template x-for="sub in adminSubmissions" :key="sub.id">
+          <div class="border rounded-xl p-4" :style="'border-color:'+(sub.issueStatus==='resolved'?'var(--green)':sub.issueStatus==='in_progress'?'var(--partial)':'var(--border)')">
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="badge" :class="sub.type==='service'?'badge-neutral':sub.type==='infrastructure'?'badge-partial':'badge-ok'"
+                    x-text="sub.type==='service'?t('form_service'):sub.type==='infrastructure'?t('form_infra'):t('form_survey')"></span>
+                  <span class="text-xs text-gray-400" x-text="formatDate(sub.date)"></span>
+                </div>
+                <div class="flex gap-3 text-xs font-bold">
+                  <span class="text-red-600">⚠ <span x-text="sub.problemCount"></span> issues</span>
+                  <span class="text-green-600">✓ <span x-text="sub.okCount"></span> ok</span>
+                  <span x-show="sub.monitorName" class="text-gray-400">by <span x-text="sub.monitorName"></span></span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="badge text-xs"
+                  :class="sub.issueStatus==='resolved'?'badge-ok':sub.issueStatus==='in_progress'?'badge-partial':sub.issueStatus==='acknowledged'?'badge-neutral':''"
+                  style="border:1.5px solid var(--border)"
+                  x-text="sub.issueStatus==='resolved'?'✓ Resolved':sub.issueStatus==='in_progress'?'⟳ In Progress':sub.issueStatus==='acknowledged'?'👁 Acknowledged':'● Pending'"></span>
+              </div>
+            </div>
+            <!-- Problem list -->
+            <div x-show="sub.problemQuestions && sub.problemQuestions.length>0" class="mb-3 space-y-1">
+              <template x-for="q in sub.problemQuestions.slice(0,3)" :key="q">
+                <p class="text-[11px] text-red-600 leading-tight">• <span x-text="q"></span></p>
+              </template>
+            </div>
+            <!-- Action buttons -->
+            <div x-show="sub.issueStatus !== 'resolved'" class="flex flex-wrap gap-2">
+              <button x-show="sub.issueStatus==='pending'"
+                @click="postIssueUpdate(sub.id,'acknowledged','')"
+                class="btn-ghost px-3 py-1.5 text-xs">👁 Acknowledge</button>
+              <button x-show="['pending','acknowledged'].includes(sub.issueStatus)"
+                @click="openUpdateModal(sub,'in_progress')"
+                class="btn-ghost px-3 py-1.5 text-xs">⟳ Mark In Progress</button>
+              <button @click="openUpdateModal(sub,'resolved')"
+                class="btn-primary px-3 py-1.5 text-xs">✓ Mark Resolved</button>
+            </div>
+            <div x-show="sub.issueStatus==='resolved'" class="text-xs text-green-600 font-bold">✓ Resolved — no further action needed</div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Modal -->
+<div x-show="updateModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4" style="background:rgba(0,0,0,0.5)">
+  <div class="card p-6 w-full max-w-md">
+    <h3 class="font-black text-base mb-4" style="color:var(--orange)" x-text="updateModal.status==='resolved'?'Mark as Resolved':'Mark as In Progress'"></h3>
+    <textarea x-model="updateModal.note" class="form-input mb-4" rows="3" :placeholder="updateModal.status==='resolved'?'Describe how the issue was fixed…':'Describe what action is being taken…'"></textarea>
+    <div class="flex gap-3">
+      <button @click="updateModal.open=false" class="btn-ghost flex-1 py-2.5 text-sm">Cancel</button>
+      <button @click="submitUpdateModal()" class="btn-primary flex-1 py-2.5 text-sm" x-text="updateModal.status==='resolved'?'✓ Confirm Resolved':'Confirm'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ CERC ANALYST DASHBOARD ═══════════════════════ -->
+<div x-show="page==='analyst'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="section-header" x-text="lang==='fr'?'Tableau de bord analyste':'CERC Analyst Dashboard'"></h1>
+        <p class="text-sm text-gray-500 mt-1" x-text="currentUser?.name"></p>
+      </div>
+      <span class="badge badge-ok">CERC Analyst</span>
+    </div>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10 space-y-6">
+    <!-- KPIs -->
+    <div class="grid sm:grid-cols-4 gap-4">
+      <div class="card p-5 text-center" style="background:var(--orange)">
+        <p class="text-5xl font-black text-white leading-none" x-text="schools.length"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-white opacity-80">Schools</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black leading-none" style="color:var(--orange)" x-text="allSubmissions.length"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400">Total Reports</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black text-red-500 leading-none" x-text="totalIssues"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400">Issues Found</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black text-green-600 leading-none" x-text="overallFixRate + '%'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400">Fix Rate</p>
+      </div>
+    </div>
+
+    <!-- User management -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-black text-base" style="color:var(--orange)" x-text="lang==='fr'?'Gestion des utilisateurs':'User Management'"></h2>
+        <button @click="showCreateUser=!showCreateUser" class="btn-primary px-4 py-2 text-xs">+ Create User</button>
+      </div>
+
+      <!-- Create user form -->
+      <div x-show="showCreateUser" class="card p-4 mb-4" style="background:#fdf5ed">
+        <div class="grid sm:grid-cols-2 gap-3 mb-3">
+          <input type="text" x-model="newUser.name" class="form-input" placeholder="Full name">
+          <input type="email" x-model="newUser.email" class="form-input" placeholder="Email">
+          <input type="password" x-model="newUser.password" class="form-input" placeholder="Password (default: ChangeMe123!)">
+          <select x-model="newUser.role" class="form-input">
+            <option value="monitor">Monitor</option>
+            <option value="school_admin">School Admin</option>
+            <option value="cerc_analyst">CERC Analyst</option>
+            <option value="public">Public Viewer</option>
+          </select>
+          <div x-show="['monitor','school_admin'].includes(newUser.role)">
+            <select x-model="newUser.schoolId" class="form-input">
+              <option value="">— No school —</option>
+              <template x-for="s in schools" :key="s.id">
+                <option :value="s.id" x-text="s.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button @click="createUser()" class="btn-primary px-4 py-2 text-xs">Create User</button>
+          <button @click="showCreateUser=false" class="btn-ghost px-4 py-2 text-xs">Cancel</button>
+        </div>
+      </div>
+
+      <!-- User list -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left font-black text-gray-400 uppercase tracking-widest border-b" style="border-color:var(--border)">
+              <th class="pb-2 pr-4">Name</th>
+              <th class="pb-2 pr-4">Email</th>
+              <th class="pb-2 pr-4">Role</th>
+              <th class="pb-2 pr-4">School</th>
+              <th class="pb-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="u in userList" :key="u.id">
+              <tr class="border-b hover:bg-orange-50 transition" style="border-color:var(--border)">
+                <td class="py-2 pr-4 font-semibold" x-text="u.name"></td>
+                <td class="py-2 pr-4 text-gray-500" x-text="u.email"></td>
+                <td class="py-2 pr-4">
+                  <span class="badge"
+                    :class="u.role==='cerc_analyst'?'badge-ok':u.role==='school_admin'?'badge-partial':u.role==='monitor'?'badge-neutral':''"
+                    x-text="u.role.replace('_',' ')"></span>
+                </td>
+                <td class="py-2 pr-4 text-gray-500" x-text="u.school_name||'—'"></td>
+                <td class="py-2">
+                  <button @click="toggleUserActive(u)"
+                    class="text-xs font-bold"
+                    :class="u.is_active?'text-green-600':'text-red-500'"
+                    x-text="u.is_active?'Active':'Disabled'"></button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div x-show="userList.length===0" class="text-center py-6 text-gray-400 text-sm">Loading users…</div>
+      </div>
+    </div>
+
+    <!-- All submissions review -->
+    <div class="card p-5">
+      <h2 class="font-black text-base mb-4" style="color:var(--orange)">All Submissions (Data Quality Review)</h2>
+      <div class="space-y-2">
+        <template x-for="sub in allSubmissions.slice(0,20)" :key="sub.id">
+          <div class="flex items-center justify-between border rounded-lg p-3 hover:bg-orange-50 transition" style="border-color:var(--border)">
+            <div class="flex items-center gap-3">
+              <span class="badge" :class="sub.type==='service'?'badge-neutral':sub.type==='infrastructure'?'badge-partial':'badge-ok'"
+                x-text="sub.type"></span>
+              <div>
+                <p class="text-xs font-bold" x-text="getSchool(sub.schoolId)?.name||'—'"></p>
+                <p class="text-[11px] text-gray-400" x-text="formatDate(sub.date) + (sub.monitorName?' · '+sub.monitorName:'')"></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-bold text-red-600">⚠ <span x-text="sub.problemCount"></span></span>
+              <span class="text-xs font-bold text-green-600">✓ <span x-text="sub.okCount"></span></span>
+              <button @click="viewSubmission(sub)" class="btn-ghost px-2 py-1 text-xs">View</button>
+              <button @click="deleteSubmission(sub.id)" class="text-xs text-red-400 hover:text-red-600 font-bold px-1">✕</button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ PUBLIC VIEWER DASHBOARD ═══════════════════════ -->
+<div x-show="page==='public-dashboard'" x-cloak class="fade-in">
+  <div class="max-w-screen-xl mx-auto px-6 pt-8 pb-4">
+    <h1 class="section-header" x-text="lang==='fr'?'Données publiques agrégées':'Public Aggregate Data'"></h1>
+    <p class="text-sm text-gray-500 mt-1" x-text="lang==='fr'?'Données anonymisées — aucune école ou personne identifiable':'Anonymised data — no schools or individuals are identifiable'"></p>
+  </div>
+  <div class="max-w-screen-xl mx-auto px-6 pb-10 space-y-6">
+    <!-- Stat cards -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card p-5 text-center" style="background:var(--orange)">
+        <p class="text-5xl font-black text-white leading-none" x-text="publicStats.total_schools||'—'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-white opacity-80" x-text="t('stat_schools')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black leading-none" style="color:var(--orange)" x-text="publicStats.total_reports||'—'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('total_reports')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black text-red-500 leading-none" x-text="publicStats.total_issues||'—'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400" x-text="t('stat_problems')"></p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-5xl font-black text-green-600 leading-none" x-text="publicStats.total_provinces||'—'"></p>
+        <p class="text-xs font-bold uppercase tracking-widest mt-2 text-gray-400">Provinces</p>
+      </div>
+    </div>
+    <!-- Province breakdown -->
+    <div class="card p-5">
+      <h2 class="font-black text-base mb-4" style="color:var(--orange)" x-text="t('by_province')"></h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-black text-gray-400 uppercase tracking-widest border-b" style="border-color:var(--border)">
+              <th class="pb-3 pr-4" x-text="t('province')"></th>
+              <th class="pb-3 pr-4 text-center" x-text="t('schools_col')"></th>
+              <th class="pb-3 pr-4 text-center" x-text="t('reports_col')"></th>
+              <th class="pb-3 text-center" x-text="t('problems_col')"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="p in publicStats.provinces||[]" :key="p.province">
+              <tr class="border-b hover:bg-orange-50 transition" style="border-color:var(--border)">
+                <td class="py-3 pr-4 font-semibold" x-text="p.province"></td>
+                <td class="py-3 pr-4 text-center" x-text="p.schools"></td>
+                <td class="py-3 pr-4 text-center" x-text="p.reports"></td>
+                <td class="py-3 text-center font-bold text-red-500" x-text="p.issues"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card p-5 text-center">
+      <p class="text-sm text-gray-500 mb-4" x-text="lang==='fr'?'Créez un compte pour accéder à des données détaillées et contribuer à la surveillance.':'Create an account to access detailed data and contribute to monitoring.'"></p>
+      <button @click="currentUser=null; authView='register'" class="btn-primary px-6 py-3 text-sm" x-text="lang==='fr'?'Créer un compte →':'Create an Account →'"></button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main app wrapper -->
+
 </body>
 </html>
