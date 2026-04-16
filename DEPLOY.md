@@ -163,7 +163,14 @@ Save with `Ctrl+O`, exit with `Ctrl+X`.
 
 ## STEP 6 — Initialise the database
 
-Run the schema SQL file against your managed database:
+First, export the `DATABASE_URL` from your `.env` file into the current shell
+(the `.env` file is only read automatically by Node.js, not by bash):
+
+```bash
+export $(grep -v '^#' /opt/educheckapp/.env | xargs)
+```
+
+Then run the schema SQL file against your managed database:
 
 ```bash
 psql "$DATABASE_URL" -f /opt/educheckapp/schema.sql
@@ -361,6 +368,8 @@ git pull
 systemctl restart educheck-api
 
 # Re-run schema migrations if the DB changed
+# (export DATABASE_URL from .env first if not already in the shell)
+export $(grep -v '^#' /opt/educheckapp/.env | xargs)
 psql "$DATABASE_URL" -f schema.sql
 ```
 
