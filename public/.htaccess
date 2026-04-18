@@ -1,0 +1,49 @@
+# ══════════════════════════════════════════════
+#  EduCheck v2 — public/.htaccess
+#  Rewrite toutes les requêtes /api/* → api/index.php
+# ══════════════════════════════════════════════
+
+Options -Indexes
+Options -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Servir les fichiers statiques tels quels
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Toutes les routes API → front controller PHP
+    RewriteRule ^api(/.*)?$ api/index.php [QSA,L]
+
+    # SPA : tout le reste → index.html
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# ── Sécurité ────────────────────────────────────────────────────────────────
+<FilesMatch "\.(env|sql|md|json|lock|sh)$">
+    Require all denied
+</FilesMatch>
+
+# ── Compression gzip ────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# ── Cache assets statiques ───────────────────────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css              "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png             "access plus 1 year"
+    ExpiresByType image/jpeg            "access plus 1 year"
+</IfModule>
+
+# ── Headers de sécurité ──────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
